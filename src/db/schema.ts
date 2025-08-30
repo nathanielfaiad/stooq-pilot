@@ -11,5 +11,5 @@ export const stooqPrice = sqliteTable("stooq_prices", {
   lowPrice: real("low_price").notNull(),
   closePrice: real("close_price").notNull(),
   volume: integer("volume").notNull(),
-  openInterest: integer("open_interest"),
+  openInterest: integer("open_interest").notNull(),
 });

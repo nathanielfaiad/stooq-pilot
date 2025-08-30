@@ -12,5 +12,5 @@
 - Test SQL
 
 ```bash
- npx ts-node -r tsconfig-paths/register src/db/tests/sql.test.ts
+ npx ts-node -r tsconfig-paths/register src/db/data_loader.ts
 ```
