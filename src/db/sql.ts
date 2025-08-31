@@ -9,15 +9,20 @@ export async function insertStooqPrice(entry: StooqPriceInsert) {
 }
 
 export async function insertStooqPricesBulk(
-  ticker: string,
   entries: StooqPriceInsert[],
   batchSize = 1000
 ) {
-  console.log(`Inserting ${batchSize} stooqPrices for ${ticker}`);
+  console.log(`Batch inserting ${batchSize} stooqPrices`);
   for (let i = 0; i < entries.length; i += batchSize) {
     const batch = entries.slice(i, i + batchSize);
     await db.insert(stooqPrice).values(batch);
   }
+
+  // POC - inserting one by one
+  // for (let i = 0; i < entries.length; i++) {
+  //   console.log(`Inserting ticker ${entries[i].ticker}`);
+  //   await db.insert(stooqPrice).values(entries[i]);
+  // }
   return true;
 }
 

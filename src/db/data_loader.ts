@@ -36,20 +36,23 @@ async function insertDataToDb(rows: string[][]) {
   if (rows.length === 0) return;
   // Skip header row
   for (const row of rows.slice(1)) {
-    // Map row to StooqPriceInsert
-    const entry: StooqPriceInsert = {
-      ticker: row[0],
-      period: row[1],
-      tradeDate: row[2],
-      tradeTime: row[3],
-      openPrice: parseFloat(row[4]),
-      highPrice: parseFloat(row[5]),
-      lowPrice: parseFloat(row[6]),
-      closePrice: parseFloat(row[7]),
-      volume: parseInt(row[8]),
-      openInterest: parseInt(row[9]),
-    };
-    await insertStooqPrice(entry);
+    // Only include US tickers
+    if (row[0].endsWith(".US")) {
+      // Map row to StooqPriceInsert
+      const entry: StooqPriceInsert = {
+        ticker: row[0].split(".")[0],
+        //   period: row[1],
+        tradeDate: row[2],
+        //   tradeTime: row[3],
+        openPrice: parseFloat(row[4]),
+        highPrice: parseFloat(row[5]),
+        lowPrice: parseFloat(row[6]),
+        closePrice: parseFloat(row[7]),
+        volume: parseInt(row[8]),
+        //   openInterest: parseInt(row[9]),
+      };
+      await insertStooqPrice(entry);
+    }
   }
 }
 
@@ -58,24 +61,28 @@ async function insertDataToDbBulk(rows: string[][]) {
   // Skip header row
   const entries: StooqPriceInsert[] = [];
   for (const row of rows.slice(1)) {
-    // Map row to StooqPriceInsert
-    const entry: StooqPriceInsert = {
-      ticker: row[0],
-      period: row[1],
-      tradeDate: row[2],
-      tradeTime: row[3],
-      openPrice: parseFloat(row[4]),
-      highPrice: parseFloat(row[5]),
-      lowPrice: parseFloat(row[6]),
-      closePrice: parseFloat(row[7]),
-      volume: parseInt(row[8]),
-      openInterest: parseInt(row[9]),
-    };
-    entries.push(entry);
+    // Only include US tickers
+    if (row[0].endsWith(".US")) {
+      // Map row to StooqPriceInsert
+      const entry: StooqPriceInsert = {
+        ticker: row[0].split(".")[0],
+        //   period: row[1],
+        tradeDate: row[2],
+        //   tradeTime: row[3],
+        openPrice: parseFloat(row[4]),
+        highPrice: parseFloat(row[5]),
+        lowPrice: parseFloat(row[6]),
+        closePrice: parseFloat(row[7]),
+        volume: parseInt(row[8]),
+        //   openInterest: parseInt(row[9]),
+      };
+      entries.push(entry);
+    }
   }
 
   if (entries.length === 0) return;
-  await insertStooqPricesBulk(entries[0].ticker, entries);
+  console.log(`Extracted ${entries.length} entries from file`);
+  await insertStooqPricesBulk(entries);
 }
 
 async function main() {
