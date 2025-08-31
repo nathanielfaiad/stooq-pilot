@@ -42,7 +42,7 @@ async function insertDataToDb(rows: string[][]) {
       const entry: StooqPriceInsert = {
         ticker: row[0].split(".")[0],
         //   period: row[1],
-        tradeDate: row[2],
+        tradeDate: parseInt(row[2]),
         //   tradeTime: row[3],
         openPrice: parseFloat(row[4]),
         highPrice: parseFloat(row[5]),
@@ -67,7 +67,7 @@ async function insertDataToDbBulk(rows: string[][]) {
       const entry: StooqPriceInsert = {
         ticker: row[0].split(".")[0],
         //   period: row[1],
-        tradeDate: row[2],
+        tradeDate: parseInt(row[2]),
         //   tradeTime: row[3],
         openPrice: parseFloat(row[4]),
         highPrice: parseFloat(row[5]),
