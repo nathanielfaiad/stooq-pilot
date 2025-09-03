@@ -41,15 +41,12 @@ async function insertDataToDb(rows: string[][]) {
       // Map row to StooqPriceInsert
       const entry: StooqPriceInsert = {
         ticker: row[0].split(".")[0],
-        //   period: row[1],
         tradeDate: parseInt(row[2]),
-        //   tradeTime: row[3],
         openPrice: parseFloat(row[4]),
         highPrice: parseFloat(row[5]),
         lowPrice: parseFloat(row[6]),
         closePrice: parseFloat(row[7]),
         volume: parseInt(row[8]),
-        //   openInterest: parseInt(row[9]),
       };
       await insertStooqPrice(entry);
     }
@@ -66,15 +63,12 @@ async function insertDataToDbBulk(rows: string[][]) {
       // Map row to StooqPriceInsert
       const entry: StooqPriceInsert = {
         ticker: row[0].split(".")[0],
-        //   period: row[1],
         tradeDate: parseInt(row[2]),
-        //   tradeTime: row[3],
         openPrice: parseFloat(row[4]),
         highPrice: parseFloat(row[5]),
         lowPrice: parseFloat(row[6]),
         closePrice: parseFloat(row[7]),
         volume: parseInt(row[8]),
-        //   openInterest: parseInt(row[9]),
       };
       entries.push(entry);
     }
