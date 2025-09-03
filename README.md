@@ -14,3 +14,9 @@
 ```bash
  npx ts-node -r tsconfig-paths/register src/db/data_loader.ts
 ```
+
+- Test Scan (Daily Swing Candidates)
+
+```bash
+ npx ts-node -r tsconfig-paths/register src/service/tests/scan.test.ts
+```

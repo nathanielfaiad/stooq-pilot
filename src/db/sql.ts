@@ -1,8 +1,9 @@
 // Get all records from the last N days (assuming tradeDate is yyyymmdd integer)
-import { StooqPriceInsert } from "@src/db/types";
+import { db } from "@src/db/db";
+import { stooqPrice } from "@src/db/schema";
+import { StooqPriceInsert, StooqPriceRow } from "@src/db/types";
+import { IntDate } from "@src/service/dates";
 import { and, eq, gte, lte } from "drizzle-orm";
-import { db } from "./db";
-import { stooqPrice } from "./schema";
 
 export async function getRecentStooqPrices(days: number) {
   // Get today's date in yyyymmdd format
@@ -50,7 +51,7 @@ export async function insertStooqPrice(entry: StooqPriceInsert) {
 
 export async function insertStooqPricesBulk(
   entries: StooqPriceInsert[],
-  batchSize = 1000
+  batchSize = 3000
 ) {
   console.log(`Batch inserting ${batchSize} stooqPrices`);
   for (let i = 0; i < entries.length; i += batchSize) {
@@ -72,4 +73,31 @@ export async function getAllStooqPrices(limit = 50) {
     .from(stooqPrice)
     // .orderBy(stooqPrice.entryDeadline)
     .limit(limit);
+}
+
+export async function listDistinctTickersSince(
+  sinceDate: IntDate
+): Promise<string[]> {
+  // SQLite DISTINCT query
+  const rows = await db
+    .select({ ticker: stooqPrice.ticker })
+    .from(stooqPrice)
+    .where(gte(stooqPrice.tradeDate, sinceDate))
+    .groupBy(stooqPrice.ticker);
+  return rows.map((r) => r.ticker);
+}
+
+export async function loadTickerBars(
+  ticker: string,
+  minDateInclusive: IntDate
+): Promise<StooqPriceRow[]> {
+  return db
+    .select()
+    .from(stooqPrice)
+    .where(
+      and(
+        eq(stooqPrice.ticker, ticker),
+        gte(stooqPrice.tradeDate, minDateInclusive)
+      )
+    );
 }
