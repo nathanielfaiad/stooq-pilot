@@ -15,8 +15,9 @@ export async function runDailyScan(cfg: ScanConfig): Promise<FinalPick[]> {
   const tickers = await getTickers();
 
   const picks: FinalPick[] = [];
-  for (const t of tickers) {
-    console.log(`Scanning ${t.ticker}...`);
+  for (let i = 0; i < tickers.length; i++) {
+    const t = tickers[i];
+    console.log(`Scanning ${i + 1}/${tickers.length} - ${t.ticker}`);
     const rowsDB = await getTickerPrices(t.id, since);
     if (rowsDB.length < 50) continue; // not enough data
 

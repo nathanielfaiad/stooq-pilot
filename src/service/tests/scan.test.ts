@@ -4,8 +4,8 @@ async function main() {
   const picks = await runDailyScan({
     lookbackDays: 120, // ~6 months
     minMedianDollarVol: 2_000_000,
-    minDailyScore: 0.6,
-    topN: 20,
+    minDailyScore: 0.7,
+    topN: 30,
   });
 
   console.log("Top swing candidates:");
