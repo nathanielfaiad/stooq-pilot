@@ -1,9 +1,9 @@
 import fs from "fs";
 import path from "path";
-import { insertStooqPrice, insertStooqPricesBulk } from "./sql";
+import { insertStooqPricesBulk, insertStooqTicker } from "./sql";
 import { StooqPriceInsert } from "./types";
 
-const DATA_DIR = path.join(__dirname, "data");
+const DATA_DIR = path.join(__dirname, "data/daily/us/nysemkt stocks");
 const DB_PATH = path.join(__dirname, "stooq_data.db");
 
 function parseTxtFile(filepath: string): string[][] {
@@ -32,28 +32,7 @@ function getAllTxtFiles(rootDir: string): string[] {
   return txtFiles;
 }
 
-async function insertDataToDb(rows: string[][]) {
-  if (rows.length === 0) return;
-  // Skip header row
-  for (const row of rows.slice(1)) {
-    // Only include US tickers
-    if (row[0].endsWith(".US")) {
-      // Map row to StooqPriceInsert
-      const entry: StooqPriceInsert = {
-        ticker: row[0].split(".")[0],
-        tradeDate: parseInt(row[2]),
-        openPrice: parseFloat(row[4]),
-        highPrice: parseFloat(row[5]),
-        lowPrice: parseFloat(row[6]),
-        closePrice: parseFloat(row[7]),
-        volume: parseInt(row[8]),
-      };
-      await insertStooqPrice(entry);
-    }
-  }
-}
-
-async function insertDataToDbBulk(rows: string[][]) {
+async function insertDataToDbBulk(tickerId: number, rows: string[][]) {
   if (rows.length === 0) return;
   // Skip header row
   const entries: StooqPriceInsert[] = [];
@@ -62,7 +41,7 @@ async function insertDataToDbBulk(rows: string[][]) {
     if (row[0].endsWith(".US")) {
       // Map row to StooqPriceInsert
       const entry: StooqPriceInsert = {
-        ticker: row[0].split(".")[0],
+        tickerId: tickerId,
         tradeDate: parseInt(row[2]),
         openPrice: parseFloat(row[4]),
         highPrice: parseFloat(row[5]),
@@ -75,12 +54,15 @@ async function insertDataToDbBulk(rows: string[][]) {
   }
 
   if (entries.length === 0) return;
-  console.log(`Extracted ${entries.length} entries from file`);
+  console.log(
+    `Inserted ${entries.length} stooqPrices for tickerId ${tickerId}`
+  );
   await insertStooqPricesBulk(entries);
 }
 
 async function main() {
   const txtFiles = getAllTxtFiles(DATA_DIR);
+  console.log(`Found ${txtFiles.length} .txt files in ${DATA_DIR}`);
   for (const txtFile of txtFiles) {
     console.log(`Processing ${txtFile}`);
     const rows = parseTxtFile(txtFile);
@@ -88,9 +70,17 @@ async function main() {
     const parts = txtFile.split(path.sep);
     const tickerFile = path.basename(txtFile, ".txt");
     const ticker = tickerFile.split(".")[0];
-    const period = parts.includes("daily") ? "daily" : "unknown";
-    // await insertDataToDb(rows);
-    await insertDataToDbBulk(rows);
+    const exchange = "NYSE_American";
+    const assetType = "STOCK";
+
+    // Insert ticker and get ID
+    const tickerId = await insertStooqTicker({
+      ticker,
+      exchange,
+      assetType,
+    });
+
+    await insertDataToDbBulk(tickerId, rows);
   }
 }
 
