@@ -1,4 +1,4 @@
-import { listDistinctTickersSince, loadTickerBars } from "@src/db/sql";
+import { getTickerPrices, getTickers } from "@src/db/sql";
 import { evaluateDailyCandidate } from "@src/service/dailySwing";
 import { daysAgoIntUTC } from "@src/service/dates";
 import { FinalPick } from "@src/service/models";
@@ -12,21 +12,21 @@ export interface ScanConfig {
 
 export async function runDailyScan(cfg: ScanConfig): Promise<FinalPick[]> {
   const since = daysAgoIntUTC(cfg.lookbackDays);
-  const tickers = await listDistinctTickersSince(since);
+  const tickers = await getTickers();
 
   const picks: FinalPick[] = [];
   for (const t of tickers) {
-    console.log(`Scanning ${t}...`);
-    const rowsDB = await loadTickerBars(t, since);
+    console.log(`Scanning ${t.ticker}...`);
+    const rowsDB = await getTickerPrices(t.id, since);
     if (rowsDB.length < 50) continue; // not enough data
 
-    const cand = evaluateDailyCandidate(t, rowsDB, {
+    const cand = evaluateDailyCandidate(t.ticker, rowsDB, {
       minMedianDollarVol: cfg.minMedianDollarVol,
       minDailyScore: cfg.minDailyScore,
     });
     if (!cand) continue;
 
-    console.log(`Picked ${t} with score ${cand.dailyScore.toFixed(3)}`);
+    console.log(`Picked ${t.ticker} with score ${cand.dailyScore.toFixed(3)}`);
     picks.push({
       ticker: cand.ticker,
       finalScore: cand.dailyScore, // daily only; add intraday later if desired

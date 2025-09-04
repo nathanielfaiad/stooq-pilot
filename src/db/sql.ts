@@ -1,7 +1,33 @@
+import { and, eq, lte } from "drizzle-orm";
+
+export async function getTickersFiltered(options?: {
+  exchange?: string;
+  assetType?: string;
+}) {
+  let whereClause = undefined;
+  if (options?.exchange && options?.assetType) {
+    whereClause = and(
+      eq(stooqTicker.exchange, options.exchange),
+      eq(stooqTicker.assetType, options.assetType)
+    );
+  } else if (options?.exchange) {
+    whereClause = eq(stooqTicker.exchange, options.exchange);
+  } else if (options?.assetType) {
+    whereClause = eq(stooqTicker.assetType, options.assetType);
+  }
+  const query = db.select().from(stooqTicker);
+  return whereClause ? query.where(whereClause) : query;
+}
 // Get all records from the last N days (assuming tradeDate is yyyymmdd integer)
 import { db } from "@src/db/db";
 import { stooqPrice, stooqTicker } from "@src/db/schema";
-import { StooqPriceInsert, StooqTickerInsert } from "@src/db/types";
+import {
+  StooqPriceInsert,
+  StooqPriceRow,
+  StooqTickerInsert,
+  StooqTickerRow,
+} from "@src/db/types";
+import { IntDate, todayIntUTC } from "@src/service/dates";
 import { gte } from "drizzle-orm";
 
 export async function getRecentStooqPrices(days: number) {
@@ -84,29 +110,31 @@ export async function getAllStooqPrices(limit = 50) {
     .limit(limit);
 }
 
-// export async function listDistinctTickersSince(
-//   sinceDate: IntDate
-// ): Promise<string[]> {
-//   // SQLite DISTINCT query
-//   const rows = await db
-//     .select({ ticker: stooqPrice.ticker })
-//     .from(stooqPrice)
-//     .where(gte(stooqPrice.tradeDate, sinceDate))
-//     .groupBy(stooqPrice.ticker);
-//   return rows.map((r) => r.ticker);
-// }
+export async function getTickers(): Promise<
+  Omit<StooqTickerRow, "exchange" | "assetType">[]
+> {
+  const rows = await db
+    .select({ tickerId: stooqTicker.id, ticker: stooqTicker.ticker })
+    .from(stooqTicker)
+    .where(eq(stooqTicker.assetType, "STOCK"));
+  return rows.map((r) => {
+    return { id: r.tickerId, ticker: r.ticker };
+  });
+}
 
-// export async function loadTickerBars(
-//   ticker: string,
-//   minDateInclusive: IntDate
-// ): Promise<StooqPriceRow[]> {
-//   return db
-//     .select()
-//     .from(stooqPrice)
-//     .where(
-//       and(
-//         eq(stooqPrice.ticker, ticker),
-//         gte(stooqPrice.tradeDate, minDateInclusive)
-//       )
-//     );
-// }
+export async function getTickerPrices(
+  tickerId: number,
+  from: IntDate,
+  to: IntDate = todayIntUTC()
+): Promise<StooqPriceRow[]> {
+  return db
+    .select()
+    .from(stooqPrice)
+    .where(
+      and(
+        eq(stooqPrice.tickerId, tickerId),
+        gte(stooqPrice.tradeDate, from),
+        lte(stooqPrice.tradeDate, to)
+      )
+    );
+}
