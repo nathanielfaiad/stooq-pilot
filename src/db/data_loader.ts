@@ -3,8 +3,18 @@ import path from "path";
 import { insertStooqPricesBulk, insertStooqTicker } from "./sql";
 import { StooqPriceInsert } from "./types";
 
-const DATA_DIR = path.join(__dirname, "data/daily/us/nysemkt stocks");
-const DB_PATH = path.join(__dirname, "stooq_data.db");
+type DataDirConfig = {
+  dir: string; // relative to __dirname
+  exchange: string;
+};
+
+// Map of directories to process. Each entry contains the directory (relative to this file)
+// and the exchange value that should be used when inserting tickers.
+const DATA_DIRS: DataDirConfig[] = [
+  { dir: "data/daily/us/nasdaq stocks", exchange: "NASDAQ" },
+  { dir: "data/daily/us/nyse stocks", exchange: "NYSE" },
+  { dir: "data/daily/us/nysemkt stocks", exchange: "NYSE_American" },
+];
 
 function parseTxtFile(filepath: string): string[][] {
   const content = fs.readFileSync(filepath, "utf-8");
@@ -61,26 +71,36 @@ async function insertDataToDbBulk(tickerId: number, rows: string[][]) {
 }
 
 async function main() {
-  const txtFiles = getAllTxtFiles(DATA_DIR);
-  console.log(`Found ${txtFiles.length} .txt files in ${DATA_DIR}`);
-  for (const txtFile of txtFiles) {
-    console.log(`Processing ${txtFile}`);
-    const rows = parseTxtFile(txtFile);
-    // Extract ticker and period from path, adjust as needed
-    const parts = txtFile.split(path.sep);
-    const tickerFile = path.basename(txtFile, ".txt");
-    const ticker = tickerFile.split(".")[0];
-    const exchange = "NYSE_American";
-    const assetType = "STOCK";
+  for (const cfg of DATA_DIRS) {
+    const fullDir = path.join(__dirname, cfg.dir);
+    if (!fs.existsSync(fullDir) || !fs.statSync(fullDir).isDirectory()) {
+      console.warn(
+        `Directory not found or not a directory: ${fullDir}. Skipping.`
+      );
+      continue;
+    }
 
-    // Insert ticker and get ID
-    const tickerId = await insertStooqTicker({
-      ticker,
-      exchange,
-      assetType,
-    });
+    const txtFiles = getAllTxtFiles(fullDir);
+    console.log(`Found ${txtFiles.length} .txt files in ${fullDir}`);
 
-    await insertDataToDbBulk(tickerId, rows);
+    for (const txtFile of txtFiles) {
+      console.log(`Processing ${txtFile} (exchange=${cfg.exchange})`);
+      const rows = parseTxtFile(txtFile);
+      // Extract ticker from filename
+      const tickerFile = path.basename(txtFile, ".txt");
+      const ticker = tickerFile.split(".")[0];
+      const exchange = cfg.exchange;
+      const assetType = "STOCK";
+
+      // Insert ticker and get ID
+      const tickerId = await insertStooqTicker({
+        ticker,
+        exchange,
+        assetType,
+      });
+
+      await insertDataToDbBulk(tickerId, rows);
+    }
   }
 }
 
