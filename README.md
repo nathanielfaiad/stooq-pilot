@@ -12,11 +12,11 @@
 - Test SQL
 
 ```bash
- npx ts-node -r tsconfig-paths/register src/db/data_loader.ts
+ npx ts-node -r tsconfig-paths/register apps/server/src/db/data_loader.ts
 ```
 
 - Test Scan (Daily Swing Candidates)
 
 ```bash
- npx ts-node -r tsconfig-paths/register src/service/tests/scan.test.ts
+ npx ts-node -r tsconfig-paths/register apps/server/src/service/tests/scan.test.ts
 ```

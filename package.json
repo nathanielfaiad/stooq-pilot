@@ -1,21 +1,14 @@
 {
-  "dependencies": {
-    "better-sqlite3": "^12.2.0",
-    "cheerio": "^1.1.2",
-    "dotenv": "^17.2.1",
-    "drizzle-orm": "^0.44.4",
-    "node-fetch": "^3.3.2",
-    "openai": "^5.11.0",
-    "ts-dedent": "^2.2.0",
-    "zod": "^3.25.76"
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev:server": "npm --prefix ./apps/server run dev",
+    "dev:web": "npm --prefix ./apps/web run dev",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:web\""
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.13",
-    "@types/node": "^24.1.0",
-    "@typescript-eslint/eslint-plugin": "^8.38.0",
-    "@typescript-eslint/parser": "^8.38.0",
-    "drizzle-kit": "^0.31.4",
-    "eslint": "^9.32.0",
-    "tsconfig-paths": "^4.2.0"
+    "concurrently": "^8.2.0"
   }
 }

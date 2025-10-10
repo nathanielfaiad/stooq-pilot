@@ -10,8 +10,8 @@
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "@src/*": ["src/*"]
+      "@src/*": ["apps/server/src/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/types/**/*.d.ts"]
+  "include": ["apps/server/src/**/*.ts", "apps/server/src/types/**/*.d.ts"]
 }
