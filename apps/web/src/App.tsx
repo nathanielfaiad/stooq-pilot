@@ -1,17 +1,21 @@
-import Box from "@mui/material/Box";
-import Container from "@mui/material/Container";
-import Typography from "@mui/material/Typography";
-import TickerTable from "./components/TickerTable";
+import { Navigate, Route, Routes } from "react-router-dom";
+import AppShell from "./components/AppShell";
+import Home from "./pages/Home";
+import TickersPage from "./pages/TickersPage";
+
+const navItems = [
+  { id: "home", label: "Home", href: "/" },
+  { id: "tickers", label: "Tickers", href: "/tickers" },
+];
 
 export default function App() {
   return (
-    <Container maxWidth="lg">
-      <Box sx={{ my: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Stooq Pilot — Tickers
-        </Typography>
-        <TickerTable />
-      </Box>
-    </Container>
+    <AppShell navItems={navItems}>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/tickers" element={<TickersPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AppShell>
   );
 }

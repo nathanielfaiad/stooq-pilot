@@ -12,6 +12,7 @@
     "react-dom": "^18.2.0",
     "@reduxjs/toolkit": "^2.9.0",
     "react-redux": "^8.1.0",
+    "react-router-dom": "^6.18.0",
     "@mui/material": "^5.14.0",
     "@mui/icons-material": "^5.14.0",
     "@emotion/react": "^11.11.0",
