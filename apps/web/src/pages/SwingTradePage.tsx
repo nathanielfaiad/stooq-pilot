@@ -4,13 +4,9 @@ import { useSearchParams } from "react-router-dom";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
-import Divider from "@mui/material/Divider";
 import FormControl from "@mui/material/FormControl";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import InputLabel from "@mui/material/InputLabel";
-import List from "@mui/material/List";
-import ListItem from "@mui/material/ListItem";
-import ListItemText from "@mui/material/ListItemText";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Select from "@mui/material/Select";
@@ -188,13 +184,100 @@ export default function SwingTradePage() {
             const total = results.length;
             const passed = results.filter((r) => Boolean(r.passed));
             const failed = results.filter((r) => !r.passed);
+            const passRate = total === 0 ? 0 : (passed.length / total) * 100;
+            const failRate = total === 0 ? 0 : (failed.length / total) * 100;
+
+            const reasonCounts: Record<string, number> = {};
+            failed.forEach((it: any) => {
+              const reasons = Array.isArray(it.reasons)
+                ? it.reasons
+                : it.reason
+                ? [String(it.reason)]
+                : [];
+              if (!reasons.length) {
+                reasonCounts["No reasons provided"] =
+                  (reasonCounts["No reasons provided"] ?? 0) + 1;
+                return;
+              }
+              reasons.forEach((reason: string) => {
+                const key = String(reason);
+                reasonCounts[key] = (reasonCounts[key] ?? 0) + 1;
+              });
+            });
+            const reasonEntries = Object.entries(reasonCounts).sort(
+              (a, b) => b[1] - a[1]
+            );
             return (
               <>
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="subtitle1">
-                    Results: {total} — Passed: {passed.length} — Failed:{" "}
-                    {failed.length}
-                  </Typography>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 2,
+                      mb: 2,
+                    }}
+                  >
+                    <Paper variant="outlined" sx={{ p: 2, minWidth: 180 }}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Total results
+                      </Typography>
+                      <Typography variant="h5">{total}</Typography>
+                    </Paper>
+                    <Paper variant="outlined" sx={{ p: 2, minWidth: 180 }}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Passed
+                      </Typography>
+                      <Typography variant="h5">{passed.length}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {passRate.toFixed(1)}%
+                      </Typography>
+                    </Paper>
+                    <Paper variant="outlined" sx={{ p: 2, minWidth: 180 }}>
+                      <Typography variant="subtitle2" color="text.secondary">
+                        Failed
+                      </Typography>
+                      <Typography variant="h5">{failed.length}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {failRate.toFixed(1)}%
+                      </Typography>
+                    </Paper>
+                  </Box>
+
+                  <Paper variant="outlined" sx={{ p: 2 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                      Failure reason breakdown
+                    </Typography>
+                    {reasonEntries.length === 0 ? (
+                      <Typography color="text.secondary">
+                        All tickers passed the filters.
+                      </Typography>
+                    ) : (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                        }}
+                      >
+                        {reasonEntries.map(([reason, count]) => (
+                          <Box
+                            key={reason}
+                            sx={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <Typography variant="body2">{reason}</Typography>
+                            <Chip label={count} size="small" />
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+                  </Paper>
+
                   {total === 0 && (
                     <Typography
                       variant="body2"
@@ -207,73 +290,7 @@ export default function SwingTradePage() {
                         : 'Try the "Debug (very loose)" preset and enable Debug output.'}
                     </Typography>
                   )}
-
-                  {failed.length > 0 && (
-                    <Paper variant="outlined" sx={{ mt: 1, p: 1 }}>
-                      <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                        Failed tickers (up to 50)
-                      </Typography>
-                      <List dense disablePadding>
-                        {failed.slice(0, 50).map((it: any, i: number) => {
-                          const sym =
-                            it.symbol || it.ticker || it?.signal?.symbol || "";
-                          const reasons = Array.isArray(it.reasons)
-                            ? it.reasons
-                            : it.reason
-                            ? [String(it.reason)]
-                            : [];
-                          return (
-                            <React.Fragment key={i}>
-                              <ListItem alignItems="flex-start">
-                                <ListItemText
-                                  primary={sym}
-                                  secondary={
-                                    <Box
-                                      sx={{
-                                        display: "flex",
-                                        gap: 1,
-                                        flexWrap: "wrap",
-                                        mt: 0.5,
-                                      }}
-                                    >
-                                      {reasons.length > 0 ? (
-                                        reasons.map(
-                                          (r: string, idx: number) => (
-                                            <Chip
-                                              key={idx}
-                                              label={r}
-                                              size="small"
-                                            />
-                                          )
-                                        )
-                                      ) : (
-                                        <Typography
-                                          variant="body2"
-                                          color="text.secondary"
-                                        >
-                                          No reasons provided
-                                        </Typography>
-                                      )}
-                                    </Box>
-                                  }
-                                />
-                              </ListItem>
-                              {i < Math.min(failed.length - 1, 49) && (
-                                <Divider component="li" />
-                              )}
-                            </React.Fragment>
-                          );
-                        })}
-                      </List>
-                    </Paper>
-                  )}
                 </Box>
-
-                <pre
-                  style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
-                >
-                  {JSON.stringify(data, null, 2)}
-                </pre>
               </>
             );
           })()}

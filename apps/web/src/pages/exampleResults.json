@@ -1,0 +1,113 @@
+{
+  "forDate": 20251009,
+  "preset": "aggressive",
+  "results": [
+    {
+      "id": 115,
+      "symbol": "afjk",
+      "passed": true,
+      "signals": [
+        {
+          "date": 20251009,
+          "entryPx": 11.35,
+          "stop": 11.2275,
+          "targets": [11.4725, 11.533750000000001, 11.595],
+          "rrToSwing": 0,
+          "meta": {
+            "rsi": 55.35714285714286,
+            "relVol": 2.753847279913631,
+            "pctAbove50": 1.8684376756333165,
+            "entryMode": "breakout"
+          }
+        }
+      ],
+      "nextEntryDate": 20251010
+    },
+    {
+      "id": 933,
+      "symbol": "cntb",
+      "passed": true,
+      "signals": [
+        {
+          "date": 20251009,
+          "entryPx": 1.98,
+          "stop": 1.22754,
+          "targets": [2.7324599999999997, 3.1086899999999997, 3.48492],
+          "rrToSwing": 0.09302820083459566,
+          "meta": {
+            "rsi": 64.08160461601868,
+            "relVol": 2.8607010218590787,
+            "pctAbove50": 9.649001363413934,
+            "entryMode": "breakout"
+          }
+        }
+      ],
+      "nextEntryDate": 20251010
+    },
+    {
+      "id": 5394,
+      "symbol": "ecg",
+      "passed": true,
+      "signals": [
+        {
+          "date": 20251009,
+          "entryPx": 87.75,
+          "stop": 78.77713,
+          "targets": [96.72287, 101.209305, 105.69574],
+          "rrToSwing": 0.06463929601119801,
+          "meta": {
+            "rsi": 61.47132169576059,
+            "relVol": 1.883250390990493,
+            "pctAbove50": 12.521638776687771,
+            "entryMode": "breakout"
+          }
+        }
+      ],
+      "nextEntryDate": 20251010
+    },
+    {
+      "id": 6621,
+      "symbol": "ncz",
+      "passed": true,
+      "signals": [
+        {
+          "date": 20251009,
+          "entryPx": 14.36,
+          "stop": 13.51292,
+          "targets": [15.20708, 15.63062, 16.05416],
+          "rrToSwing": 0.011805260424044702,
+          "meta": {
+            "rsi": 60.2649006622516,
+            "relVol": 1.7478952745635143,
+            "pctAbove50": 5.9653472652673845,
+            "entryMode": "breakout"
+          }
+        }
+      ],
+      "nextEntryDate": 20251010
+    },
+    {
+      "id": 7105,
+      "symbol": "rci",
+      "passed": true,
+      "signals": [
+        {
+          "date": 20251009,
+          "entryPx": 36.2,
+          "stop": 33.82222,
+          "targets": [
+            38.577780000000004, 39.766670000000005, 40.955560000000006
+          ],
+          "rrToSwing": 0.025233621276987413,
+          "meta": {
+            "rsi": 56.23100303951368,
+            "relVol": 1.4497538236481586,
+            "pctAbove50": 3.083389336279474,
+            "entryMode": "breakout"
+          }
+        }
+      ],
+      "nextEntryDate": 20251010
+    }
+  ]
+}

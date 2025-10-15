@@ -23,8 +23,12 @@ export interface SwingConfig {
   atrMult: number;
   maxStretchPct: number;
   nearPct50: number;
-  entryMode: "breakout" | "pullback";
+  entryMode: "breakout" | "pullback" | "any";
   requireMacdAbove0: boolean;
+  requirePriceAbove50: boolean;
+  requireTrendAligned: boolean;
+  requireEntryGate: boolean;
+  allowRepeatEntries: boolean;
   cooldownBars: number;
   useMTFConfirm: boolean; // placeholder (not implemented)
   useBaseTightness: boolean; // placeholder
@@ -45,7 +49,11 @@ export const defaultConfigs: Record<PresetName, Partial<SwingConfig>> = {
     atrMult: 3,
     maxStretchPct: 200,
     nearPct50: 200,
-    entryMode: "breakout",
+    entryMode: "any",
+    requirePriceAbove50: false,
+    requireTrendAligned: false,
+    requireEntryGate: false,
+    allowRepeatEntries: true,
     cooldownBars: 0,
     useMTFConfirm: false,
     useBaseTightness: false,
@@ -116,6 +124,10 @@ function mergeConfig(
     nearPct50: 8,
     entryMode: "pullback",
     requireMacdAbove0: true,
+    requirePriceAbove50: true,
+    requireTrendAligned: true,
+    requireEntryGate: true,
+    allowRepeatEntries: false,
     cooldownBars: 5,
     useMTFConfirm: true,
     useBaseTightness: true,
@@ -218,6 +230,7 @@ export async function analyzeSwing(
   const rsiSeries = rsi(closes, 14);
   const atrSeries = atrCalc(highs, lows, closes, 14);
   const highest20 = highest(highs, 20);
+  const volSma20 = sma(vols, 20);
   // Now indicator arrays are in scope wherever needed
 
   const signals: Signal[] = [];
@@ -242,15 +255,16 @@ export async function analyzeSwing(
     const trendAligned = sma50[i] > sma200[i];
     const rsiOk = rsiSeries[i] >= cfg.rsiMin && rsiSeries[i] <= cfg.rsiMax;
 
-    const volSma20 = sma(vols, 20);
     const relVol = vols[i] / (volSma20[i] || 1);
     const relVolOk = relVol >= cfg.relVolMin;
 
     const pctAbove50 = (close / sma50[i] - 1) * 100.0;
     const stretchOk = pctAbove50 <= cfg.maxStretchPct;
 
+    const priceFilterPass = !cfg.requirePriceAbove50 || priceAbove50;
+    const trendFilterPass = !cfg.requireTrendAligned || trendAligned;
     const dailyAll =
-      priceAbove50 && trendAligned && rsiOk && relVolOk && stretchOk;
+      priceFilterPass && trendFilterPass && rsiOk && relVolOk && stretchOk;
 
     const isBreakout = close > (highest20[i - 1] ?? highest20[i]);
     const nearSma50 = Math.abs(pctAbove50) <= cfg.nearPct50;
@@ -260,18 +274,60 @@ export async function analyzeSwing(
     const isPullbackReclaim =
       nearSma50 && reclaimEma20 && rsiSeries[i] > rsiSeries[i - 1];
 
-    const entryGate =
-      cfg.entryMode === "breakout" ? isBreakout : isPullbackReclaim;
+    const entryGateRaw =
+      cfg.entryMode === "breakout"
+        ? isBreakout
+        : cfg.entryMode === "pullback"
+        ? isPullbackReclaim
+        : isBreakout || isPullbackReclaim;
+    const entryGatePass = !cfg.requireEntryGate || entryGateRaw;
 
-    const entryPass = dailyAll && entryGate;
-    const firstPass =
-      entryPass &&
-      !(
-        dailyAll &&
-        (cfg.entryMode === "breakout"
-          ? closes[i - 1] > (highest20[i - 2] ?? highest20[i - 1])
-          : false)
-      );
+    const entryPass = dailyAll && entryGatePass;
+
+    let prevEntryPass = false;
+    if (!cfg.allowRepeatEntries && i - 1 >= 0) {
+      const prevClose = closes[i - 1];
+      const prevPriceAbove50 = prevClose > sma50[i - 1];
+      const prevTrendAligned = sma50[i - 1] > sma200[i - 1];
+      const prevRsiOk =
+        rsiSeries[i - 1] >= cfg.rsiMin && rsiSeries[i - 1] <= cfg.rsiMax;
+      const prevRelVol = vols[i - 1] / (volSma20[i - 1] || 1);
+      const prevRelVolOk = prevRelVol >= cfg.relVolMin;
+      const prevPctAbove50 = (prevClose / sma50[i - 1] - 1) * 100.0;
+      const prevStretchOk = prevPctAbove50 <= cfg.maxStretchPct;
+      const prevPricePass = !cfg.requirePriceAbove50 || prevPriceAbove50;
+      const prevTrendPass = !cfg.requireTrendAligned || prevTrendAligned;
+      const prevDailyAll =
+        prevPricePass &&
+        prevTrendPass &&
+        prevRsiOk &&
+        prevRelVolOk &&
+        prevStretchOk;
+
+      const prevIsBreakout = prevClose > (highest20[i - 2] ?? highest20[i - 1]);
+      const prevNearSma50 = Math.abs(prevPctAbove50) <= cfg.nearPct50;
+      const prevReclaimEma20 =
+        i >= 2 &&
+        prevClose > (ema20[i - 1] ?? prevClose) &&
+        (closes[i - 2] ?? prevClose) <= (ema20[i - 2] ?? prevClose);
+      const prevIsPullbackReclaim =
+        i >= 2 &&
+        prevNearSma50 &&
+        prevReclaimEma20 &&
+        rsiSeries[i - 1] > rsiSeries[i - 2];
+
+      const prevEntryGateRaw =
+        cfg.entryMode === "breakout"
+          ? prevIsBreakout
+          : cfg.entryMode === "pullback"
+          ? prevIsPullbackReclaim
+          : prevIsBreakout || prevIsPullbackReclaim;
+      const prevEntryGatePass = !cfg.requireEntryGate || prevEntryGateRaw;
+
+      prevEntryPass = prevDailyAll && prevEntryGatePass;
+    }
+
+    const firstPass = entryPass && (cfg.allowRepeatEntries || !prevEntryPass);
 
     if (firstPass) {
       const entryPx = close;
@@ -344,39 +400,17 @@ export async function evaluateTickerForDate(
   const rsiSeries = rsi(closes, 14);
   const atrSeries = atrCalc(highs, lows, closes, 14);
   const highest20 = highest(highs, 20);
+  const volSma20 = sma(vols, 20);
 
-  // Debug: log data range and index
-  //   console.log(
-  //     `Price data for ${ticker} from ${rows[0]?.tradeDate} to ${
-  //       rows[rows.length - 1]?.tradeDate
-  //     }`
-  //   );
   const idx: number = (rows as { tradeDate: number }[]).findIndex(
     (r) => r.tradeDate === forDate
   );
-  //   console.log(`forDate: ${forDate}, index in data: ${idx}`);
-  if (idx < 0) {
-    console.warn(`forDate ${forDate} not found in data for ${ticker}`);
-  }
-  //   console.log(`atrSeries length: ${atrSeries.length}`);
+  // if (idx < 0) {
+  //   console.warn(`forDate ${forDate} not found in data for ${ticker}`);
+  // }
   if (atrSeries.length > 0) {
     const sampleIdx = Math.min(idx, atrSeries.length - 1);
-    // console.log(`atrSeries[${sampleIdx}]: ${atrSeries[sampleIdx]}`);
   }
-  //   console.log(`sma50 at 342: `, sma50[342], "value at 343: ", sma50[343]);
-  //   console.log(`sma200 at 342: `, sma200[342], "value at 343: ", sma200[343]);
-  //   console.log(
-  //     `rsiSeries at 342: `,
-  //     rsiSeries[342],
-  //     "value at 343: ",
-  //     rsiSeries[343]
-  //   );
-  //   console.log(
-  //     `highest20 at 342: `,
-  //     highest20[342],
-  //     "value at 343: ",
-  //     highest20[343]
-  //   );
 
   const reasons: string[] = [];
 
@@ -387,12 +421,6 @@ export async function evaluateTickerForDate(
     isNaN(atrSeries[idx]) ||
     isNaN(highest20[idx])
   ) {
-    // console.info(`Indicators at index ${idx} for ${ticker} have NaN values:`);
-    // console.info(`  sma50: ${sma50[idx]}`);
-    // console.info(`  sma200: ${sma200[idx]}`);
-    // console.info(`  rsiSeries: ${rsiSeries[idx]}`);
-    // console.info(`  atrSeries: ${atrSeries[idx]}`);
-    // console.info(`  highest20: ${highest20[idx]}`);
     return { passed: false, reasons: ["insufficient indicator history"] };
   }
 
@@ -400,10 +428,14 @@ export async function evaluateTickerForDate(
   const atr = atrSeries[idx - 1] ?? atrSeries[idx] ?? 0;
 
   const priceAbove50 = close > sma50[idx];
-  if (!priceAbove50) reasons.push("price not above SMA50");
+  const priceFilterPass = !cfg.requirePriceAbove50 || priceAbove50;
+  if (!priceFilterPass && cfg.requirePriceAbove50)
+    reasons.push("price not above SMA50");
 
   const trendAligned = sma50[idx] > sma200[idx];
-  if (!trendAligned) reasons.push("SMA50 not above SMA200 (trend not aligned)");
+  const trendFilterPass = !cfg.requireTrendAligned || trendAligned;
+  if (!trendFilterPass && cfg.requireTrendAligned)
+    reasons.push("SMA50 not above SMA200 (trend not aligned)");
 
   const rsiOk = rsiSeries[idx] >= cfg.rsiMin && rsiSeries[idx] <= cfg.rsiMax;
   if (!rsiOk)
@@ -411,13 +443,13 @@ export async function evaluateTickerForDate(
       `rsi ${rsiSeries[idx].toFixed(1)} outside ${cfg.rsiMin}-${cfg.rsiMax}`
     );
 
-  const volSma20 = sma(vols, 20);
   const relVol = vols[idx] / (volSma20[idx] || 1);
-  if (!(relVol >= cfg.relVolMin))
-    reasons.push(`relVol ${relVol.toFixed(2)} < ${cfg.relVolMin}`);
+  const relVolOk = relVol >= cfg.relVolMin;
+  if (!relVolOk) reasons.push(`relVol ${relVol.toFixed(2)} < ${cfg.relVolMin}`);
 
   const pctAbove50 = (close / sma50[idx] - 1) * 100.0;
-  if (!(pctAbove50 <= cfg.maxStretchPct))
+  const stretchOk = pctAbove50 <= cfg.maxStretchPct;
+  if (!stretchOk)
     reasons.push(`pctAbove50 ${pctAbove50.toFixed(2)} > ${cfg.maxStretchPct}`);
 
   const isBreakout = close > (highest20[idx - 1] ?? highest20[idx]);
@@ -428,49 +460,66 @@ export async function evaluateTickerForDate(
   const isPullbackReclaim =
     nearSma50 && reclaimEma20 && rsiSeries[idx] > rsiSeries[idx - 1];
 
-  const entryGate =
-    cfg.entryMode === "breakout" ? isBreakout : isPullbackReclaim;
-  if (!entryGate)
+  const entryGateRaw =
+    cfg.entryMode === "breakout"
+      ? isBreakout
+      : cfg.entryMode === "pullback"
+      ? isPullbackReclaim
+      : isBreakout || isPullbackReclaim;
+  const entryGatePass = !cfg.requireEntryGate || entryGateRaw;
+  if (!entryGatePass && cfg.requireEntryGate)
     reasons.push(
       `entry gate failed (breakout:${isBreakout}, pullback:${isPullbackReclaim})`
     );
 
   const dailyAll =
-    priceAbove50 &&
-    trendAligned &&
-    rsiOk &&
-    relVol >= cfg.relVolMin &&
-    pctAbove50 <= cfg.maxStretchPct;
+    priceFilterPass && trendFilterPass && rsiOk && relVolOk && stretchOk;
   if (!dailyAll) reasons.push("core daily filters not all true");
 
   // check firstPass (no previous entry)
   let prevEntryPass = false;
-  if (idx - 1 >= 0) {
+  if (!cfg.allowRepeatEntries && idx - 1 >= 0) {
     const prevClose = closes[idx - 1];
     const prevPriceAbove50 = prevClose > sma50[idx - 1];
     const prevTrendAligned = sma50[idx - 1] > sma200[idx - 1];
     const prevRsiOk =
       rsiSeries[idx - 1] >= cfg.rsiMin && rsiSeries[idx - 1] <= cfg.rsiMax;
     const prevRelVol = vols[idx - 1] / (volSma20[idx - 1] || 1);
+    const prevRelVolOk = prevRelVol >= cfg.relVolMin;
     const prevPctAbove50 = (prevClose / sma50[idx - 1] - 1) * 100.0;
+    const prevStretchOk = prevPctAbove50 <= cfg.maxStretchPct;
     const prevIsBreakout =
       prevClose > (highest20[idx - 2] ?? highest20[idx - 1]);
+    const prevNearSma50 = Math.abs(prevPctAbove50) <= cfg.nearPct50;
+    const prevReclaimEma20 =
+      idx >= 2 &&
+      prevClose > (ema20[idx - 1] ?? prevClose) &&
+      (closes[idx - 2] ?? prevClose) <= (ema20[idx - 2] ?? prevClose);
     const prevIsPullbackReclaim =
-      Math.abs(prevPctAbove50) <= cfg.nearPct50 &&
-      prevClose > (ema20[idx - 1] ?? prevClose);
-    const prevEntryGate =
-      cfg.entryMode === "breakout" ? prevIsBreakout : prevIsPullbackReclaim;
-    prevEntryPass =
-      prevPriceAbove50 &&
-      prevTrendAligned &&
+      idx >= 2 &&
+      prevNearSma50 &&
+      prevReclaimEma20 &&
+      rsiSeries[idx - 1] > rsiSeries[idx - 2];
+    const prevEntryGateRaw =
+      cfg.entryMode === "breakout"
+        ? prevIsBreakout
+        : cfg.entryMode === "pullback"
+        ? prevIsPullbackReclaim
+        : prevIsBreakout || prevIsPullbackReclaim;
+    const prevEntryGatePass = !cfg.requireEntryGate || prevEntryGateRaw;
+    const prevPricePass = !cfg.requirePriceAbove50 || prevPriceAbove50;
+    const prevTrendPass = !cfg.requireTrendAligned || prevTrendAligned;
+    const prevDailyAll =
+      prevPricePass &&
+      prevTrendPass &&
       prevRsiOk &&
-      prevRelVol >= cfg.relVolMin &&
-      prevPctAbove50 <= cfg.maxStretchPct &&
-      prevEntryGate;
+      prevRelVolOk &&
+      prevStretchOk;
+    prevEntryPass = prevDailyAll && prevEntryGatePass;
   }
 
-  const entryPass = dailyAll && entryGate;
-  const firstPass = entryPass && !prevEntryPass;
+  const entryPass = dailyAll && entryGatePass;
+  const firstPass = entryPass && (cfg.allowRepeatEntries || !prevEntryPass);
 
   if (!firstPass) {
     if (!entryPass)
@@ -531,7 +580,6 @@ export async function scanTickersForDate(
   const failureReasonCounts: Record<string, number> = {};
 
   for (const t of tickers) {
-    // console.log(`Evaluating ${t.ticker} for ${forDate}`);
     try {
       const evalRes = await evaluateTickerForDate(
         t.ticker,
@@ -544,6 +592,7 @@ export async function scanTickersForDate(
         results.push({
           id: t.id,
           symbol: t.ticker,
+          passed: true,
           signals: [evalRes.signal],
           nextEntryDate: addDaysInt(forDate, 1),
         });
