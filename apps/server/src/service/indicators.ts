@@ -9,6 +9,7 @@ export function ema(values: readonly number[], period: number): number[] {
   return out;
 }
 
+// Enhance the `atr` function to initialize with the first TR value and handle small arrays.
 export function atr(
   highs: readonly number[],
   lows: readonly number[],
@@ -19,6 +20,8 @@ export function atr(
   if (highs.length < 2) return [];
 
   const tr: number[] = [];
+  // Initialize TR with first value
+  let prevTR = 0;
   for (let i = 1; i < highs.length; i++) {
     const curH = highs[i],
       curL = lows[i],
@@ -29,9 +32,18 @@ export function atr(
       Math.abs(curL - prevC)
     );
     tr.push(trVal);
+    if (i === 1) {
+      prevTR = trVal; // set initial TR
+    }
   }
-  // EMA of TR (Wilder-ish smoothing via EMA)
-  return ema(tr, period);
+  const atrs = ema(tr, period);
+  // Pad the ATR array to match input length with initial value
+  const result: number[] = Array(highs.length).fill(0);
+  result[0] = 0; // no ATR for first index
+  for (let i = 1; i < highs.length; i++) {
+    result[i] = atrs[i - 1] ?? 0;
+  }
+  return result;
 }
 
 export function percentile(sorted: readonly number[], p: number): number {

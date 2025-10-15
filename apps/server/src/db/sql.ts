@@ -8,6 +8,8 @@ import {
   StooqTickerInsert,
   StooqTickerRow,
 } from "./types";
+// Import the `sql` utility for raw SQL queries.
+import { sql } from "drizzle-orm";
 
 export async function getTickersFiltered(options?: {
   exchange?: string;
@@ -37,6 +39,21 @@ export async function getRecentStooqPrices(days: number) {
     .select()
     .from(stooqPrice)
     .where(gte(stooqPrice.tradeDate, cutoff));
+}
+
+// Add a new function to fetch up to 500 recent prices before or at a given date.
+export async function getRecentPricesBeforeDate(
+  tickerId: number,
+  forDate: IntDate
+): Promise<StooqPriceRow[]> {
+  return db
+    .select()
+    .from(stooqPrice)
+    .where(
+      and(eq(stooqPrice.tickerId, tickerId), lte(stooqPrice.tradeDate, forDate))
+    )
+    .orderBy(sql`${stooqPrice.tradeDate} DESC`)
+    .limit(500);
 }
 
 export async function insertStooqTicker(entry: StooqTickerInsert) {
@@ -76,6 +93,27 @@ export async function getTickers(): Promise<StooqTickerRow[]> {
     .from(stooqTicker)
     .where(eq(stooqTicker.assetType, "STOCK"));
   return rows;
+}
+
+export async function getTickerBySymbol(
+  ticker: string
+): Promise<StooqTickerRow | null> {
+  const rows = await db
+    .select()
+    .from(stooqTicker)
+    .where(eq(stooqTicker.ticker, ticker))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+export async function getTickerPricesBySymbol(
+  ticker: string,
+  from: IntDate,
+  to: IntDate = todayIntUTC()
+): Promise<StooqPriceRow[]> {
+  const t = await getTickerBySymbol(ticker);
+  if (!t) return [];
+  return getTickerPrices(t.id, from, to);
 }
 
 export async function getTickerPrices(

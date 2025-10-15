@@ -104,7 +104,12 @@ const Drawer = styled(MuiDrawer, {
   ],
 }));
 
-type NavItem = { id: string; label: string; href: string };
+type NavItem = {
+  id: string;
+  label: string;
+  href: string;
+  icon?: React.ReactNode;
+};
 
 interface AppShellProps {
   children?: React.ReactNode;
@@ -197,7 +202,8 @@ export default function AppShell({ children, navItems = [] }: AppShellProps) {
                           },
                     ]}
                   >
-                    {index % 2 === 0 ? <InboxIcon /> : <MailIcon />}
+                    {item.icon ??
+                      (index % 2 === 0 ? <InboxIcon /> : <MailIcon />)}
                   </ListItemIcon>
                   <ListItemText
                     primary={item.label}
