@@ -1,24 +1,222 @@
 import React from "react";
 import { useSearchParams } from "react-router-dom";
 
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import Accordion from "@mui/material/Accordion";
+import AccordionDetails from "@mui/material/AccordionDetails";
+import AccordionSummary from "@mui/material/AccordionSummary";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import FormControl from "@mui/material/FormControl";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import Grid from "@mui/material/Grid";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
-import Select from "@mui/material/Select";
+import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+
+type PresetName =
+  | "manual"
+  | "aggressive"
+  | "balanced"
+  | "conservative"
+  | "debug";
+type EntryMode = "breakout" | "pullback" | "any";
+
+interface SwingConfigValues {
+  rsiMin: number;
+  rsiMax: number;
+  relVolMin: number;
+  atrMult: number;
+  maxStretchPct: number;
+  nearPct50: number;
+  entryMode: EntryMode;
+  requireMacdAbove0: boolean;
+  requirePriceAbove50: boolean;
+  requireTrendAligned: boolean;
+  requireEntryGate: boolean;
+  allowRepeatEntries: boolean;
+  cooldownBars: number;
+  useMTFConfirm: boolean;
+  useBaseTightness: boolean;
+  useCandleQuality: boolean;
+  useGapGuard: boolean;
+  bbLen: number;
+  bbMult: number;
+}
+
+const baseConfig: SwingConfigValues = {
+  rsiMin: 45,
+  rsiMax: 60,
+  relVolMin: 1.8,
+  atrMult: 1.5,
+  maxStretchPct: 10,
+  nearPct50: 8,
+  entryMode: "pullback",
+  requireMacdAbove0: true,
+  requirePriceAbove50: true,
+  requireTrendAligned: true,
+  requireEntryGate: true,
+  allowRepeatEntries: false,
+  cooldownBars: 5,
+  useMTFConfirm: true,
+  useBaseTightness: true,
+  useCandleQuality: true,
+  useGapGuard: true,
+  bbLen: 20,
+  bbMult: 2,
+};
+
+const presetConfigOverrides: Record<PresetName, Partial<SwingConfigValues>> = {
+  manual: {},
+  debug: {
+    rsiMin: 0,
+    rsiMax: 100,
+    relVolMin: 0,
+    atrMult: 3,
+    maxStretchPct: 200,
+    nearPct50: 200,
+    entryMode: "any",
+    requirePriceAbove50: false,
+    requireTrendAligned: false,
+    requireEntryGate: false,
+    allowRepeatEntries: true,
+    cooldownBars: 0,
+    useMTFConfirm: false,
+    useBaseTightness: false,
+    useCandleQuality: false,
+    useGapGuard: false,
+  },
+  aggressive: {
+    rsiMin: 40,
+    rsiMax: 65,
+    relVolMin: 1.3,
+    atrMult: 1.5,
+    maxStretchPct: 15,
+    nearPct50: 10,
+    entryMode: "breakout",
+    cooldownBars: 3,
+  },
+  balanced: {
+    rsiMin: 43,
+    rsiMax: 62,
+    relVolMin: 1.5,
+    atrMult: 1.5,
+    maxStretchPct: 12,
+    nearPct50: 8,
+    entryMode: "breakout",
+    cooldownBars: 4,
+  },
+  conservative: {
+    rsiMin: 45,
+    rsiMax: 60,
+    relVolMin: 1.8,
+    atrMult: 1.5,
+    maxStretchPct: 10,
+    nearPct50: 6,
+    entryMode: "pullback",
+    cooldownBars: 5,
+  },
+};
+
+type ConfigFieldType = "number" | "integer" | "boolean" | "select";
+
+interface ConfigFieldDefinition {
+  key: keyof SwingConfigValues;
+  label: string;
+  type: ConfigFieldType;
+}
+
+const configFieldDefinitions: ConfigFieldDefinition[] = [
+  { key: "rsiMin", label: "RSI Min", type: "number" },
+  { key: "rsiMax", label: "RSI Max", type: "number" },
+  { key: "relVolMin", label: "Relative Volume Min", type: "number" },
+  { key: "atrMult", label: "ATR Multiplier", type: "number" },
+  { key: "maxStretchPct", label: "Max Stretch %", type: "number" },
+  { key: "nearPct50", label: "Near 50SMA %", type: "number" },
+  { key: "entryMode", label: "Entry Mode", type: "select" },
+  { key: "requireMacdAbove0", label: "Require MACD > 0", type: "boolean" },
+  {
+    key: "requirePriceAbove50",
+    label: "Require Price > SMA50",
+    type: "boolean",
+  },
+  {
+    key: "requireTrendAligned",
+    label: "Require SMA50 > SMA200",
+    type: "boolean",
+  },
+  { key: "requireEntryGate", label: "Require Entry Gate", type: "boolean" },
+  { key: "allowRepeatEntries", label: "Allow Repeat Entries", type: "boolean" },
+  { key: "cooldownBars", label: "Cooldown Bars", type: "integer" },
+  { key: "useMTFConfirm", label: "Use MTF Confirm", type: "boolean" },
+  { key: "useBaseTightness", label: "Use Base Tightness", type: "boolean" },
+  { key: "useCandleQuality", label: "Use Candle Quality", type: "boolean" },
+  { key: "useGapGuard", label: "Use Gap Guard", type: "boolean" },
+  { key: "bbLen", label: "BB Length", type: "integer" },
+  { key: "bbMult", label: "BB Multiplier", type: "number" },
+];
+
+const entryModeOptions: { value: EntryMode; label: string }[] = [
+  { value: "breakout", label: "Breakout" },
+  { value: "pullback", label: "Pullback" },
+  { value: "any", label: "Breakout or Pullback" },
+];
+
+const numberFormatter = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 2,
+});
+const integerFormatter = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 0,
+});
 
 function formatDateInputToInt(s: string): string | null {
   if (!s) return null;
   const parts = s.split("-");
   if (parts.length !== 3) return null;
   return `${parts[0]}${parts[1].padStart(2, "0")}${parts[2].padStart(2, "0")}`;
+}
+
+function formatIntDateToDisplay(value: number | string | undefined): string {
+  if (!value) return "—";
+  const str = String(value);
+  if (str.length !== 8) return str;
+  return `${str.slice(0, 4)}-${str.slice(4, 6)}-${str.slice(6, 8)}`;
+}
+
+function diffFromBase(config: SwingConfigValues): Partial<SwingConfigValues> {
+  return configFieldDefinitions.reduce<Partial<SwingConfigValues>>(
+    (acc, field) => {
+      const key = field.key;
+      const value = config[key];
+      if (!Object.is(value, baseConfig[key])) {
+        return { ...acc, [key]: value };
+      }
+      return acc;
+    },
+    {}
+  );
+}
+
+function formatConfigValue(
+  field: ConfigFieldDefinition,
+  value: SwingConfigValues[keyof SwingConfigValues]
+): string {
+  if (field.type === "boolean") {
+    return value ? "Yes" : "No";
+  }
+  if (field.type === "select") {
+    const option = entryModeOptions.find((opt) => opt.value === value);
+    return option ? option.label : String(value);
+  }
+  if (field.type === "integer") {
+    return integerFormatter.format(value as number);
+  }
+  return numberFormatter.format(value as number);
 }
 
 export default function SwingTradePage() {
@@ -29,48 +227,129 @@ export default function SwingTradePage() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [forDate, setForDate] = React.useState<string | null>(null);
-  const [preset, setPreset] = React.useState<string>("balanced");
+  const [preset, setPreset] = React.useState<PresetName>("balanced");
   const [debug, setDebug] = React.useState<boolean>(false);
 
-  // Helper: normalize different possible response shapes into an array of results
-  function getResultsFromData(d: any): Array<any> {
-    if (!d) return [];
-    if (Array.isArray(d)) return d;
-    if (d.results && Array.isArray(d.results)) return d.results;
-    if (d.data && Array.isArray(d.data)) return d.data;
-    if (d.payload && Array.isArray(d.payload)) return d.payload;
-    return [];
-  }
+  const [manualConfig, setManualConfig] = React.useState<SwingConfigValues>({
+    ...baseConfig,
+    ...presetConfigOverrides.manual,
+  });
+
+  const manualOverrides = React.useMemo(() => {
+    if (preset !== "manual") return undefined;
+    const diff = diffFromBase(manualConfig);
+    return Object.keys(diff).length > 0 ? diff : undefined;
+  }, [preset, manualConfig]);
+
+  const manualOverridesString = React.useMemo(() => {
+    if (!manualOverrides) return "";
+    return JSON.stringify(manualOverrides);
+  }, [manualOverrides]);
+
+  const hasManualOverrides = Boolean(manualOverrides);
+
+  const resolvedConfig = React.useMemo(() => {
+    const overrides = presetConfigOverrides[preset] ?? {};
+    if (preset === "manual") {
+      return { ...baseConfig, ...overrides, ...manualConfig };
+    }
+    return { ...baseConfig, ...overrides };
+  }, [preset, manualConfig]);
+
+  const getResultsFromData = React.useCallback(
+    (value: any): Array<any> => {
+      if (!value) return [];
+      if (Array.isArray(value)) return value;
+      if (value.results && Array.isArray(value.results)) return value.results;
+      if (value.data && Array.isArray(value.data)) return value.data;
+      if (value.payload && Array.isArray(value.payload)) return value.payload;
+      if (value.signals && Array.isArray(value.signals)) {
+        return [
+          {
+            symbol: value.symbol ?? symbol,
+            passed: value.signals.length > 0,
+            signals: value.signals,
+          },
+        ];
+      }
+      return [];
+    },
+    [symbol]
+  );
+
+  const results = React.useMemo(
+    () => getResultsFromData(data),
+    [data, getResultsFromData]
+  );
+
+  const passedResults = React.useMemo(
+    () => results.filter((r) => r.passed === true),
+    [results]
+  );
+  const failedResults = React.useMemo(
+    () => results.filter((r) => r.passed === false),
+    [results]
+  );
+
+  const passRate =
+    results.length === 0 ? 0 : (passedResults.length / results.length) * 100;
+  const failRate =
+    results.length === 0 ? 0 : (failedResults.length / results.length) * 100;
+
+  const failureReasonEntries = React.useMemo(() => {
+    if (!debug) return [];
+    const reasonCounts: Record<string, number> = {};
+    failedResults.forEach((item) => {
+      const reasons = Array.isArray(item.reasons)
+        ? item.reasons
+        : item.reason
+        ? [String(item.reason)]
+        : [];
+      if (reasons.length === 0) {
+        reasonCounts["No reasons provided"] =
+          (reasonCounts["No reasons provided"] ?? 0) + 1;
+      }
+      reasons.forEach((reason: any) => {
+        const key = String(reason);
+        reasonCounts[key] = (reasonCounts[key] ?? 0) + 1;
+      });
+    });
+    return Object.entries(reasonCounts).sort((a, b) => b[1] - a[1]);
+  }, [failedResults, debug]);
+
+  const hasSuccessfulRun =
+    !loading && !error && results.length > 0 && Array.isArray(results);
 
   React.useEffect(() => {
-    // auto-fetch a single-symbol scan when the symbol/preset/debug changes
     let mounted = true;
     async function fetchScan() {
       try {
-        console.log("Starting fetch scan");
         setLoading(true);
         setError(null);
         const qp = new URLSearchParams();
         qp.set("symbol", symbol);
         qp.set("preset", preset);
         if (debug) qp.set("debug", "true");
+        if (hasManualOverrides) {
+          qp.set("overrides", manualOverridesString);
+        }
         const res = await fetch(`/api/tickers/scan?${qp.toString()}`);
         if (!mounted) return;
         if (!res.ok) {
           const txt = await res.text();
-          console.log("Fetch failed with status", res.status, txt);
           setError(txt || "Scan failed");
+          setData(null);
           setLoading(false);
           return;
         }
         const json = await res.json();
-        console.log("Fetch succeeded, data:", json);
         setData(json);
       } catch (err: any) {
-        console.log("Fetch error:", err);
+        if (!mounted) return;
         setError(err?.message ?? String(err));
+        setData(null);
       } finally {
-        console.log("Fetch finally, setting loading false");
+        if (!mounted) return;
         setLoading(false);
       }
     }
@@ -78,7 +357,97 @@ export default function SwingTradePage() {
     return () => {
       mounted = false;
     };
-  }, [symbol, preset, debug]);
+  }, [symbol, preset, debug, manualOverridesString, hasManualOverrides]);
+
+  const handleManualBooleanChange = React.useCallback(
+    (key: keyof SwingConfigValues) =>
+      (event: React.ChangeEvent<HTMLInputElement>) => {
+        setManualConfig((prev) => ({
+          ...prev,
+          [key]: event.target.checked,
+        }));
+      },
+    []
+  );
+
+  const handleManualNumberChange = React.useCallback(
+    (key: keyof SwingConfigValues, type: ConfigFieldType) =>
+      (event: React.ChangeEvent<HTMLInputElement>) => {
+        const raw = event.target.value;
+        const baseValue = baseConfig[key] as number;
+        if (raw === "") {
+          setManualConfig((prev) => ({
+            ...prev,
+            [key]: baseValue,
+          }));
+          return;
+        }
+        const parsed = type === "integer" ? parseInt(raw, 10) : parseFloat(raw);
+        setManualConfig((prev) => ({
+          ...prev,
+          [key]: Number.isFinite(parsed) ? parsed : baseValue,
+        }));
+      },
+    []
+  );
+
+  const handleManualEntryModeChange = React.useCallback(
+    (event: SelectChangeEvent<EntryMode>) => {
+      const value = event.target.value as EntryMode;
+      setManualConfig((prev) => ({
+        ...prev,
+        entryMode: value,
+      }));
+    },
+    []
+  );
+
+  const runDateScan = React.useCallback(async () => {
+    if (!forDate) {
+      setError("Select a date first");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const qp = new URLSearchParams();
+      qp.set("forDate", forDate);
+      qp.set("preset", preset);
+      if (debug) qp.set("debug", "true");
+      if (hasManualOverrides) {
+        qp.set("overrides", manualOverridesString);
+      }
+      const res = await fetch(`/api/tickers/scan/date?${qp.toString()}`);
+      if (!res.ok) {
+        const txt = await res.text();
+        setError(txt || "Scan failed");
+        setLoading(false);
+        return;
+      }
+      const json = await res.json();
+      setData(json);
+      setParams((prevParams) => {
+        const next = new URLSearchParams(prevParams);
+        next.set("preset", preset);
+        next.set("symbol", symbol);
+        if (debug) next.set("debug", "true");
+        else next.delete("debug");
+        return next;
+      });
+    } catch (err: any) {
+      setError(err?.message ?? String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    forDate,
+    preset,
+    debug,
+    hasManualOverrides,
+    manualOverridesString,
+    setParams,
+    symbol,
+  ]);
 
   return (
     <Box>
@@ -86,17 +455,14 @@ export default function SwingTradePage() {
         Swing Trade Scan: {symbol}
       </Typography>
       <Paper sx={{ p: 2 }}>
-        <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2 }}>
-          <FormControl sx={{ minWidth: 180 }}>
+        <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
+          <FormControl sx={{ minWidth: 180 }} size="small">
             <InputLabel id="preset-label">Preset</InputLabel>
             <Select
               labelId="preset-label"
               value={preset}
               label="Preset"
-              onChange={(e) =>
-                setPreset(String((e.target as HTMLInputElement).value))
-              }
-              size="small"
+              onChange={(event) => setPreset(event.target.value as PresetName)}
             >
               <MenuItem value="manual">Manual</MenuItem>
               <MenuItem value="aggressive">Aggressive</MenuItem>
@@ -117,10 +483,8 @@ export default function SwingTradePage() {
                   )}-${forDate.slice(6, 8)}`
                 : ""
             }
-            onChange={(e) =>
-              setForDate(
-                formatDateInputToInt((e.target as HTMLInputElement).value)
-              )
+            onChange={(event) =>
+              setForDate(formatDateInputToInt(event.target.value))
             }
             InputLabelProps={{ shrink: true }}
             size="small"
@@ -130,170 +494,340 @@ export default function SwingTradePage() {
             control={
               <Switch
                 checked={debug}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setDebug(e.target.checked)
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                  setDebug(event.target.checked)
                 }
               />
             }
             label="Debug output"
           />
 
-          <Button
-            variant="contained"
-            onClick={async () => {
-              if (!forDate) return setError("Select a date first");
-              setLoading(true);
-              setError(null);
-              try {
-                let url = `/api/tickers/scan/date?forDate=${forDate}&preset=${encodeURIComponent(
-                  preset
-                )}`;
-                if (debug) url += `&debug=true`;
-                const res = await fetch(url);
-                if (!res.ok) {
-                  const txt = await res.text();
-                  setError(txt || "Scan failed");
-                  setLoading(false);
-                  return;
-                }
-                const json = await res.json();
-                setData(json);
-                setParams((p) => {
-                  const np = new URLSearchParams(p);
-                  if (debug) np.set("debug", "true");
-                  else np.delete("debug");
-                  return np;
-                });
-              } catch (err: any) {
-                setError(err?.message ?? String(err));
-              } finally {
-                setLoading(false);
-              }
-            }}
-          >
+          <Button variant="contained" onClick={runDateScan} disabled={loading}>
             Scan date
           </Button>
         </Box>
 
-        {loading && <div>Loading...</div>}
-        {error && <div style={{ color: "red" }}>{error}</div>}
-
-        {data !== null &&
-          (() => {
-            const results = getResultsFromData(data);
-            const total = results.length;
-            const passed = results.filter((r) => Boolean(r.passed));
-            const failed = results.filter((r) => !r.passed);
-            const passRate = total === 0 ? 0 : (passed.length / total) * 100;
-            const failRate = total === 0 ? 0 : (failed.length / total) * 100;
-
-            const reasonCounts: Record<string, number> = {};
-            failed.forEach((it: any) => {
-              const reasons = Array.isArray(it.reasons)
-                ? it.reasons
-                : it.reason
-                ? [String(it.reason)]
-                : [];
-              if (!reasons.length) {
-                reasonCounts["No reasons provided"] =
-                  (reasonCounts["No reasons provided"] ?? 0) + 1;
-                return;
-              }
-              reasons.forEach((reason: string) => {
-                const key = String(reason);
-                reasonCounts[key] = (reasonCounts[key] ?? 0) + 1;
-              });
-            });
-            const reasonEntries = Object.entries(reasonCounts).sort(
-              (a, b) => b[1] - a[1]
-            );
-            return (
-              <>
-                <Box sx={{ mb: 2 }}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: 2,
-                      mb: 2,
-                    }}
-                  >
-                    <Paper variant="outlined" sx={{ p: 2, minWidth: 180 }}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Total results
-                      </Typography>
-                      <Typography variant="h5">{total}</Typography>
-                    </Paper>
-                    <Paper variant="outlined" sx={{ p: 2, minWidth: 180 }}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Passed
-                      </Typography>
-                      <Typography variant="h5">{passed.length}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {passRate.toFixed(1)}%
-                      </Typography>
-                    </Paper>
-                    <Paper variant="outlined" sx={{ p: 2, minWidth: 180 }}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Failed
-                      </Typography>
-                      <Typography variant="h5">{failed.length}</Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {failRate.toFixed(1)}%
-                      </Typography>
-                    </Paper>
-                  </Box>
-
-                  <Paper variant="outlined" sx={{ p: 2 }}>
-                    <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                      Failure reason breakdown
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle1" gutterBottom>
+            Preset configuration
+          </Typography>
+          <Paper variant="outlined" sx={{ p: 2 }}>
+            {preset === "manual" ? (
+              <Grid container spacing={2}>
+                {configFieldDefinitions.map((field) => {
+                  const value = manualConfig[field.key];
+                  if (field.type === "boolean") {
+                    return (
+                      <Grid item xs={12} sm={6} key={field.key}>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={Boolean(value)}
+                              onChange={handleManualBooleanChange(field.key)}
+                              size="small"
+                            />
+                          }
+                          label={field.label}
+                        />
+                      </Grid>
+                    );
+                  }
+                  if (field.type === "select") {
+                    return (
+                      <Grid item xs={12} sm={6} md={4} key={field.key}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel id={`${field.key}-select-label`}>
+                            {field.label}
+                          </InputLabel>
+                          <Select
+                            labelId={`${field.key}-select-label`}
+                            label={field.label}
+                            value={value as EntryMode}
+                            onChange={handleManualEntryModeChange}
+                            size="small"
+                          >
+                            {entryModeOptions.map((option) => (
+                              <MenuItem key={option.value} value={option.value}>
+                                {option.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                    );
+                  }
+                  return (
+                    <Grid item xs={12} sm={6} md={4} key={field.key}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label={field.label}
+                        type="number"
+                        value={value as number}
+                        onChange={handleManualNumberChange(
+                          field.key,
+                          field.type
+                        )}
+                        inputProps={{
+                          step: field.type === "integer" ? 1 : 0.1,
+                        }}
+                      />
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            ) : (
+              <Grid container spacing={2}>
+                {configFieldDefinitions.map((field) => (
+                  <Grid item xs={12} sm={6} md={4} key={field.key}>
+                    <Typography variant="caption" color="text.secondary">
+                      {field.label}
                     </Typography>
-                    {reasonEntries.length === 0 ? (
-                      <Typography color="text.secondary">
-                        All tickers passed the filters.
-                      </Typography>
-                    ) : (
+                    <Typography variant="body2">
+                      {formatConfigValue(field, resolvedConfig[field.key])}
+                    </Typography>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Paper>
+        </Box>
+
+        {loading && <Typography>Loading...</Typography>}
+        {error && <Typography color="error">{error}</Typography>}
+
+        {hasSuccessfulRun && (
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 2,
+              alignItems: "stretch",
+            }}
+          >
+            <Box
+              sx={{
+                flex: { xs: "1 1 100%", md: "0 0 320px" },
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+              }}
+            >
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Run statistics
+                </Typography>
+                <Typography variant="h5">{results.length}</Typography>
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="body2">
+                    Passed: {passedResults.length} (
+                    {numberFormatter.format(passRate)}%)
+                  </Typography>
+                  <Typography variant="body2">
+                    Failed: {failedResults.length} (
+                    {numberFormatter.format(failRate)}%)
+                  </Typography>
+                </Box>
+              </Paper>
+
+              {debug && failureReasonEntries.length > 0 && (
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    Failure reason breakdown
+                  </Typography>
+                  <Box
+                    sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+                  >
+                    {failureReasonEntries.map(([reason, count]) => (
                       <Box
+                        key={reason}
                         sx={{
                           display: "flex",
-                          flexDirection: "column",
+                          justifyContent: "space-between",
+                          alignItems: "center",
                           gap: 1,
                         }}
                       >
-                        {reasonEntries.map(([reason, count]) => (
-                          <Box
-                            key={reason}
-                            sx={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              gap: 1,
-                            }}
-                          >
-                            <Typography variant="body2">{reason}</Typography>
-                            <Chip label={count} size="small" />
-                          </Box>
-                        ))}
+                        <Typography variant="body2">{reason}</Typography>
+                        <Chip label={count} size="small" />
                       </Box>
-                    )}
-                  </Paper>
+                    ))}
+                  </Box>
+                </Paper>
+              )}
+            </Box>
 
-                  {total === 0 && (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mt: 1 }}
+            <Box
+              sx={{
+                flex: "1 1 0",
+                minWidth: 0,
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+              }}
+            >
+              <Paper variant="outlined" sx={{ p: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Passing tickers
+                </Typography>
+                {passedResults.length === 0 ? (
+                  <Typography variant="body2" color="text.secondary">
+                    No passing tickers detected.
+                  </Typography>
+                ) : (
+                  passedResults.map((item: any, index: number) => (
+                    <Accordion
+                      key={`${item.symbol}-${index}`}
+                      disableGutters
+                      defaultExpanded={index === 0}
                     >
-                      No results returned from the server.{" "}
-                      {debug
-                        ? "Debug mode is on — check server debug output for reasons."
-                        : 'Try the "Debug (very loose)" preset and enable Debug output.'}
-                    </Typography>
-                  )}
-                </Box>
-              </>
-            );
-          })()}
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 0.5,
+                          }}
+                        >
+                          <Typography variant="subtitle1">
+                            {item.symbol ?? "Unknown"}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {item.signals?.length ?? 0} signal
+                            {item.signals?.length === 1 ? "" : "s"}
+                          </Typography>
+                        </Box>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        {Array.isArray(item.signals) &&
+                        item.signals.length > 0 ? (
+                          item.signals.map((signal: any, sIdx: number) => (
+                            <Paper
+                              key={sIdx}
+                              variant="outlined"
+                              sx={{ p: 1.5, mb: 1.5 }}
+                            >
+                              <Typography variant="subtitle2">
+                                Signal date:{" "}
+                                {formatIntDateToDisplay(signal.date)}
+                              </Typography>
+                              <Typography variant="body2">
+                                Entry: {numberFormatter.format(signal.entryPx)}{" "}
+                                · Stop: {numberFormatter.format(signal.stop)}
+                              </Typography>
+                              <Typography variant="body2">
+                                Targets:{" "}
+                                {Array.isArray(signal.targets)
+                                  ? signal.targets
+                                      .map((t: number) =>
+                                        numberFormatter.format(t)
+                                      )
+                                      .join(", ")
+                                  : "—"}
+                              </Typography>
+                              <Typography variant="body2">
+                                RR to swing:{" "}
+                                {signal.rrToSwing != null
+                                  ? numberFormatter.format(signal.rrToSwing)
+                                  : "—"}
+                              </Typography>
+                              {signal.meta && (
+                                <Box
+                                  sx={{
+                                    mt: 1,
+                                    display: "flex",
+                                    gap: 1.5,
+                                    flexWrap: "wrap",
+                                  }}
+                                >
+                                  {Object.entries(signal.meta).map(
+                                    ([metaKey, metaValue]) => (
+                                      <Box key={metaKey}>
+                                        <Typography
+                                          variant="caption"
+                                          color="text.secondary"
+                                        >
+                                          {metaKey}
+                                        </Typography>
+                                        <Typography variant="body2">
+                                          {typeof metaValue === "number"
+                                            ? numberFormatter.format(metaValue)
+                                            : String(metaValue)}
+                                        </Typography>
+                                      </Box>
+                                    )
+                                  )}
+                                </Box>
+                              )}
+                            </Paper>
+                          ))
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">
+                            No signal details provided.
+                          </Typography>
+                        )}
+                      </AccordionDetails>
+                    </Accordion>
+                  ))
+                )}
+              </Paper>
+
+              {debug && failedResults.length > 0 && (
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    Failed tickers
+                  </Typography>
+                  {failedResults.map((item: any, index: number) => (
+                    <Accordion
+                      key={`${item.symbol ?? index}-fail`}
+                      disableGutters
+                    >
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography variant="subtitle1">
+                          {item.symbol ?? "Unknown"}
+                        </Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 0.75,
+                          }}
+                        >
+                          {(Array.isArray(item.reasons)
+                            ? item.reasons
+                            : []
+                          ).map((reason: string, idx: number) => (
+                            <Chip key={idx} label={reason} size="small" />
+                          ))}
+                          {(!item.reasons || item.reasons.length === 0) && (
+                            <Typography variant="body2" color="text.secondary">
+                              No reasons provided.
+                            </Typography>
+                          )}
+                        </Box>
+                      </AccordionDetails>
+                    </Accordion>
+                  ))}
+                </Paper>
+              )}
+
+              {debug && data && (
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                    Raw response (debug)
+                  </Typography>
+                  <pre
+                    style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
+                  >
+                    {JSON.stringify(data, null, 2)}
+                  </pre>
+                </Paper>
+              )}
+            </Box>
+          </Box>
+        )}
       </Paper>
     </Box>
   );

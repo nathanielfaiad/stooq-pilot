@@ -1,10 +1,4 @@
-import {
-  index,
-  integer,
-  real,
-  sqliteTable,
-  text,
-} from "drizzle-orm/sqlite-core";
+import { integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const stooqTicker = sqliteTable("stooq_ticker", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -27,5 +21,5 @@ export const stooqPrice = sqliteTable(
     closePrice: real("close_price").notNull(),
     volume: integer("volume").notNull(),
   },
-  (t) => [index("idx_prices_ticker_date").on(t.tickerId, t.tradeDate)]
+  (t) => [uniqueIndex("uq_prices_ticker_date").on(t.tickerId, t.tradeDate)]
 );

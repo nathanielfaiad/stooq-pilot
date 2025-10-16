@@ -56,33 +56,6 @@ export async function getRecentPricesBeforeDate(
     .limit(500);
 }
 
-export async function insertStooqTicker(entry: StooqTickerInsert) {
-  console.log("Inserting stooqTicker:", entry);
-  const result = await db
-    .insert(stooqTicker)
-    .values(entry)
-    .returning({ id: stooqTicker.id });
-  return result[0]?.id;
-}
-
-export async function insertStooqPrice(entry: StooqPriceInsert) {
-  console.log("Inserting stooqPrice:", entry);
-  await db.insert(stooqPrice).values(entry);
-  return true;
-}
-
-export async function insertStooqPricesBulk(
-  entries: StooqPriceInsert[],
-  batchSize = 3000
-) {
-  console.log(`Batch inserting ${batchSize} stooqPrices`);
-  for (let i = 0; i < entries.length; i += batchSize) {
-    const batch = entries.slice(i, i + batchSize);
-    await db.insert(stooqPrice).values(batch);
-  }
-  return true;
-}
-
 export async function getAllStooqPrices(limit = 50) {
   return await db.select().from(stooqPrice).limit(limit);
 }
@@ -114,6 +87,64 @@ export async function getTickerPricesBySymbol(
   const t = await getTickerBySymbol(ticker);
   if (!t) return [];
   return getTickerPrices(t.id, from, to);
+}
+
+export async function insertStooqTicker(entry: StooqTickerInsert): Promise<number> {
+  const existing = await getTickerBySymbol(entry.ticker);
+  if (existing) return existing.id;
+  try {
+    const result = await db
+      .insert(stooqTicker)
+      .values(entry)
+      .returning({ id: stooqTicker.id });
+    const insertedId = result[0]?.id;
+    if (typeof insertedId === "number") {
+      return insertedId;
+    }
+  } catch (err) {
+    const fallback = await getTickerBySymbol(entry.ticker);
+    if (fallback) return fallback.id;
+    throw err;
+  }
+  const fallback = await getTickerBySymbol(entry.ticker);
+  if (fallback) return fallback.id;
+  throw new Error(`Unable to insert ticker ${entry.ticker}`);
+}
+
+export async function insertStooqPrice(entry: StooqPriceInsert): Promise<number> {
+  const result = await db
+    .insert(stooqPrice)
+    .values(entry)
+    .onConflictDoNothing({
+      target: [stooqPrice.tickerId, stooqPrice.tradeDate],
+    })
+    .run();
+  const changes =
+    typeof result === "object" && result !== null && "changes" in result
+      ? Number(result.changes)
+      : 0;
+  return changes;
+}
+
+export async function insertStooqPricesBulk(
+  entries: StooqPriceInsert[],
+  batchSize = 3000
+): Promise<{ attempted: number; inserted: number }> {
+  let inserted = 0;
+  for (let i = 0; i < entries.length; i += batchSize) {
+    const batch = entries.slice(i, i + batchSize);
+    const result = await db
+      .insert(stooqPrice)
+      .values(batch)
+      .onConflictDoNothing({
+        target: [stooqPrice.tickerId, stooqPrice.tradeDate],
+      })
+      .run();
+    if (typeof result === "object" && result !== null && "changes" in result) {
+      inserted += Number(result.changes);
+    }
+  }
+  return { attempted: entries.length, inserted };
 }
 
 export async function getTickerPrices(

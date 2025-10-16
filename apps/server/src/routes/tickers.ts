@@ -1,7 +1,11 @@
 import { Request, Response, Router } from "express";
 import { getTickers, getTickersFiltered } from "../db/sql";
 import { todayIntUTC } from "../service/dates";
-import { analyzeSwing, scanTickersForDate } from "../service/swingEntry";
+import {
+  analyzeSwing,
+  scanTickersForDate,
+  type SwingConfig,
+} from "../service/swingEntry";
 
 const router = Router();
 
@@ -30,11 +34,12 @@ router.get("/", async (req: Request, res: Response) => {
 // GET /api/tickers/scan?symbol=SYMBOL&from=YYYYMMDD&to=YYYYMMDD&preset=balanced
 router.get("/scan", async (req: Request, res: Response) => {
   try {
-    const { symbol, from, to, preset } = req.query as {
+    const { symbol, from, to, preset, overrides } = req.query as {
       symbol?: string;
       from?: string;
       to?: string;
       preset?: string;
+      overrides?: string;
     };
 
     if (!symbol) {
@@ -46,12 +51,21 @@ router.get("/scan", async (req: Request, res: Response) => {
     const fromInt = from ? parseInt(from, 10) : todayIntUTC();
     const toInt = to ? parseInt(to, 10) : todayIntUTC();
     const presetName = (preset as any) || "balanced";
+    let overridesObj: Partial<SwingConfig> | undefined;
+    if (overrides) {
+      try {
+        overridesObj = JSON.parse(overrides);
+      } catch (err) {
+        return res.status(400).json({ error: "Invalid overrides JSON" });
+      }
+    }
 
     const signals = await analyzeSwing(
       symbol,
       fromInt,
       toInt,
-      presetName as any
+      presetName as any,
+      overridesObj
     );
     return res.json({
       symbol,
@@ -70,14 +84,11 @@ router.get("/scan", async (req: Request, res: Response) => {
 // GET /api/tickers/scan/date?forDate=YYYYMMDD&preset=balanced
 router.get("/scan/date", async (req: Request, res: Response) => {
   try {
-    const {
-      forDate: forDateStr,
-      preset,
-      debug,
-    } = req.query as {
+    const { forDate: forDateStr, preset, debug, overrides } = req.query as {
       forDate?: string;
       preset?: string;
       debug?: string | undefined;
+      overrides?: string;
     };
     if (!forDateStr) {
       return res.status(400).json({ error: "Missing forDate" });
@@ -85,10 +96,18 @@ router.get("/scan/date", async (req: Request, res: Response) => {
     const forInt = parseInt(forDateStr, 10);
 
     const debugFlag = debug === "true";
+    let overridesObj: Partial<SwingConfig> | undefined;
+    if (overrides) {
+      try {
+        overridesObj = JSON.parse(overrides);
+      } catch (err) {
+        return res.status(400).json({ error: "Invalid overrides JSON" });
+      }
+    }
     const results = await scanTickersForDate(
       forInt,
       preset as any,
-      undefined,
+      overridesObj,
       debugFlag
     );
     return res.json({ forDate: forInt, preset: preset, results });
