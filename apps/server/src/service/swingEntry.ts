@@ -4,40 +4,10 @@ import {
   getTickerPrices,
   getTickers,
 } from "../db/sql";
+import { logError, logJson } from "../log/util";
 import { addDaysInt, IntDate, todayIntUTC } from "./dates";
-import { atr as atrCalc, ema } from "./indicators";
-
-type PresetName =
-  | "manual"
-  | "aggressive"
-  | "balanced"
-  | "conservative"
-  | "debug";
-
-export interface SwingConfig {
-  preset: PresetName;
-  // core filters
-  rsiMin: number;
-  rsiMax: number;
-  relVolMin: number;
-  atrMult: number;
-  maxStretchPct: number;
-  nearPct50: number;
-  entryMode: "breakout" | "pullback" | "any";
-  requireMacdAbove0: boolean;
-  requirePriceAbove50: boolean;
-  requireTrendAligned: boolean;
-  requireEntryGate: boolean;
-  allowRepeatEntries: boolean;
-  cooldownBars: number;
-  useMTFConfirm: boolean; // placeholder (not implemented)
-  useBaseTightness: boolean; // placeholder
-  useCandleQuality: boolean; // placeholder
-  useGapGuard: boolean; // placeholder
-  // tightness params
-  bbLen: number;
-  bbMult: number;
-}
+import { atr as atrCalc, ema, highest, rsi, sma } from "./indicators";
+import { PresetName, Signal, SwingConfig } from "./models";
 
 export const defaultConfigs: Record<PresetName, Partial<SwingConfig>> = {
   manual: {},
@@ -92,24 +62,6 @@ export const defaultConfigs: Record<PresetName, Partial<SwingConfig>> = {
   },
 };
 
-export interface PriceBar {
-  tradeDate: IntDate;
-  openPrice: number;
-  highPrice: number;
-  lowPrice: number;
-  closePrice: number;
-  volume: number;
-}
-
-export interface Signal {
-  date: IntDate;
-  entryPx: number;
-  stop: number;
-  targets: number[];
-  rrToSwing?: number | null;
-  meta?: Record<string, any>;
-}
-
 function mergeConfig(
   preset: PresetName,
   overrides?: Partial<SwingConfig>
@@ -138,67 +90,6 @@ function mergeConfig(
   };
   const p = defaultConfigs[preset] ?? {};
   return { ...base, ...p, ...overrides };
-}
-
-// Simple helpers for indicators we will need here (RSI, SMA, MACD simplified)
-function sma(values: number[], period: number): number[] {
-  const out: number[] = [];
-  let sum = 0;
-  for (let i = 0; i < values.length; i++) {
-    sum += values[i];
-    if (i >= period) sum -= values[i - period];
-    out.push(i >= period - 1 ? sum / period : NaN);
-  }
-  return out;
-}
-
-function rsi(values: number[], period = 14): number[] {
-  const out: number[] = [];
-  let gain = 0;
-  let loss = 0;
-  for (let i = 0; i < values.length; i++) {
-    if (i === 0) {
-      out.push(NaN);
-      continue;
-    }
-    const change = values[i] - values[i - 1];
-    gain = Math.max(0, change);
-    loss = Math.max(0, -change);
-    if (i < period) {
-      // accumulate until enough
-      out.push(NaN);
-      continue;
-    }
-    // naive simple moving average of gains/losses for speed (not Wilder)
-    let avgGain = 0;
-    let avgLoss = 0;
-    for (let j = i - period + 1; j <= i; j++) {
-      const d = values[j] - values[j - 1];
-      avgGain += Math.max(0, d);
-      avgLoss += Math.max(0, -d);
-    }
-    avgGain /= period;
-    avgLoss /= period;
-    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-    out.push(100 - 100 / (1 + rs));
-  }
-  return out;
-}
-
-function highest(values: number[], period: number): number[] {
-  const out: number[] = [];
-  for (let i = 0; i < values.length; i++) {
-    if (i < period - 1) {
-      out.push(NaN);
-      continue;
-    }
-    let m = -Infinity;
-    for (let j = i - period + 1; j <= i; j++) {
-      if (values[j] > m) m = values[j];
-    }
-    out.push(m);
-  }
-  return out;
 }
 
 export async function analyzeSwing(
@@ -607,7 +498,7 @@ export async function scanTickersForDate(
     } catch (err) {
       // ignore individual ticker errors but log
       // eslint-disable-next-line no-console
-      console.error(`Error scanning ${t.ticker}:`, err);
+      logError(`Error scanning ${t.ticker}:`, err);
       if (debug) {
         results.push({
           id: t.id,
@@ -620,7 +511,7 @@ export async function scanTickersForDate(
   }
 
   // Output the summary of failure reasons.
-  console.log("Failure Reasons Summary:", failureReasonCounts);
+  logJson({ FailureReasonsSummary: failureReasonCounts });
 
   return results;
 }

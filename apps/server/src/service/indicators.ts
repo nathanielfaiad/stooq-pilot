@@ -1,3 +1,63 @@
+// --- Centralized from swingEntry.ts ---
+export function sma(values: number[], period: number): number[] {
+  const out: number[] = [];
+  let sum = 0;
+  for (let i = 0; i < values.length; i++) {
+    sum += values[i];
+    if (i >= period) sum -= values[i - period];
+    out.push(i >= period - 1 ? sum / period : NaN);
+  }
+  return out;
+}
+
+export function rsi(values: number[], period = 14): number[] {
+  const out: number[] = [];
+  let gain = 0;
+  let loss = 0;
+  for (let i = 0; i < values.length; i++) {
+    if (i === 0) {
+      out.push(NaN);
+      continue;
+    }
+    const change = values[i] - values[i - 1];
+    gain = Math.max(0, change);
+    loss = Math.max(0, -change);
+    if (i < period) {
+      // accumulate until enough
+      out.push(NaN);
+      continue;
+    }
+    // naive simple moving average of gains/losses for speed (not Wilder)
+    let avgGain = 0;
+    let avgLoss = 0;
+    for (let j = i - period + 1; j <= i; j++) {
+      const d = values[j] - values[j - 1];
+      avgGain += Math.max(0, d);
+      avgLoss += Math.max(0, -d);
+    }
+    avgGain /= period;
+    avgLoss /= period;
+    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+    out.push(100 - 100 / (1 + rs));
+  }
+  return out;
+}
+
+export function highest(values: number[], period: number): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < values.length; i++) {
+    if (i < period - 1) {
+      out.push(NaN);
+      continue;
+    }
+    let m = -Infinity;
+    for (let j = i - period + 1; j <= i; j++) {
+      if (values[j] > m) m = values[j];
+    }
+    out.push(m);
+  }
+  return out;
+}
 export function ema(values: readonly number[], period: number): number[] {
   if (values.length === 0) return [];
   const alpha = 2 / (period + 1);
