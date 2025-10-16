@@ -257,6 +257,7 @@ export async function analyzeSwing(
 
   return signals;
 }
+
 export async function evaluateTickerForDate(
   ticker: string,
   forDate: IntDate,
@@ -285,6 +286,9 @@ export async function evaluateTickerForDate(
   const lows: number[] = rows.map((r: { lowPrice: number }) => r.lowPrice);
   const vols: number[] = rows.map((r: { volume: number }) => r.volume);
 
+  // Debug: log price bar count
+  logJson({ ticker, forDate, priceBarCount: rows.length });
+
   const sma50 = sma(closes, 50);
   const sma200 = sma(closes, 200);
   const ema20 = ema(closes, 20);
@@ -296,6 +300,23 @@ export async function evaluateTickerForDate(
   const idx: number = (rows as { tradeDate: number }[]).findIndex(
     (r) => r.tradeDate === forDate
   );
+
+  // Debug: log indicator values for target date
+  logJson({
+    ticker,
+    forDate,
+    idx,
+    closesLen: closes.length,
+    highsLen: highs.length,
+    lowsLen: lows.length,
+    sma50: sma50[idx],
+    sma200: sma200[idx],
+    rsi: rsiSeries[idx],
+    atr: atrSeries[idx],
+    highest20: highest20[idx],
+    volSma20: volSma20[idx],
+    closes: closes.slice(Math.max(0, idx - 5), idx + 1),
+  });
   // if (idx < 0) {
   //   console.warn(`forDate ${forDate} not found in data for ${ticker}`);
   // }
@@ -312,6 +333,16 @@ export async function evaluateTickerForDate(
     isNaN(atrSeries[idx]) ||
     isNaN(highest20[idx])
   ) {
+    logError("Insufficient indicator history", {
+      ticker,
+      forDate,
+      idx,
+      sma50: sma50[idx],
+      sma200: sma200[idx],
+      rsi: rsiSeries[idx],
+      atr: atrSeries[idx],
+      highest20: highest20[idx],
+    });
     return { passed: false, reasons: ["insufficient indicator history"] };
   }
 

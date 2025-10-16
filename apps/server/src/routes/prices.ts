@@ -27,7 +27,9 @@ router.post("/daily", async (req: Request, res: Response) => {
       return res.status(400).json({ error: "rows must be a non-empty array" });
     }
 
-    const dedupedRows: Array<DailyRowPayload & { ticker: string; line: number }> = [];
+    const dedupedRows: Array<
+      DailyRowPayload & { ticker: string; line: number }
+    > = [];
     const seenKeys = new Set<string>();
     let duplicateCount = 0;
     const invalidRows: { line: number; reason: string }[] = [];
@@ -38,8 +40,14 @@ router.post("/daily", async (req: Request, res: Response) => {
         invalidRows.push({ line, reason: "Row is empty" });
         return;
       }
-      const ticker =
-        typeof row.ticker === "string" ? row.ticker.trim() : String(row.ticker ?? "").trim();
+      let ticker =
+        typeof row.ticker === "string"
+          ? row.ticker.trim()
+          : String(row.ticker ?? "").trim();
+      // Remove .US suffix if present
+      if (ticker.endsWith(".US")) {
+        ticker = ticker.replace(/\.US$/, "");
+      }
       const tradeDate = Number(row.tradeDate);
       const openPrice = Number(row.openPrice);
       const highPrice = Number(row.highPrice);
@@ -60,7 +68,10 @@ router.post("/daily", async (req: Request, res: Response) => {
           Number.isFinite(val)
         )
       ) {
-        invalidRows.push({ line, reason: "Price or volume fields contain invalid numbers" });
+        invalidRows.push({
+          line,
+          reason: "Price or volume fields contain invalid numbers",
+        });
         return;
       }
 

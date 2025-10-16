@@ -74,7 +74,7 @@ export async function getTickerBySymbol(
   const rows = await db
     .select()
     .from(stooqTicker)
-    .where(eq(stooqTicker.ticker, ticker))
+    .where(sql`LOWER(${stooqTicker.ticker}) = LOWER(${ticker})`)
     .limit(1);
   return rows[0] ?? null;
 }
@@ -89,7 +89,9 @@ export async function getTickerPricesBySymbol(
   return getTickerPrices(t.id, from, to);
 }
 
-export async function insertStooqTicker(entry: StooqTickerInsert): Promise<number> {
+export async function insertStooqTicker(
+  entry: StooqTickerInsert
+): Promise<number> {
   const existing = await getTickerBySymbol(entry.ticker);
   if (existing) return existing.id;
   try {
@@ -111,7 +113,9 @@ export async function insertStooqTicker(entry: StooqTickerInsert): Promise<numbe
   throw new Error(`Unable to insert ticker ${entry.ticker}`);
 }
 
-export async function insertStooqPrice(entry: StooqPriceInsert): Promise<number> {
+export async function insertStooqPrice(
+  entry: StooqPriceInsert
+): Promise<number> {
   const result = await db
     .insert(stooqPrice)
     .values(entry)
