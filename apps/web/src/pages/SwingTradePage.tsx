@@ -17,7 +17,7 @@ import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import ToggleButtonSwitch from "../components/ToggleButtonSwitch";
+import ToggleButtonSwitch from "../components/common/ToggleButtonSwitch";
 
 type PresetName =
   | "manual"
@@ -590,7 +590,7 @@ export default function SwingTradePage() {
                               step: field.type === "integer" ? 1 : 0.1,
                             }}
                             disabled={disabled}
-                            sx={{ minWidth: 120 }}
+                            sx={{ minWidth: 120, maxWidth: 120 }}
                           />
                         )}
                       </Box>
