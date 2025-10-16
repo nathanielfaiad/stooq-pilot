@@ -8,21 +8,21 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
-import { useEffect, useMemo, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import type { AppDispatch, RootState } from "../../store";
-import { fetchTickers } from "../../store/tickersSlice";
+import { useMemo, useState } from "react";
 
-export default function TickerTable() {
-  const dispatch = useDispatch<AppDispatch>();
-  const tickersState = useSelector((s: RootState) => s.tickers);
-  const tickers = tickersState.items;
+interface TickerTableProps {
+  tickers?: any[];
+  error?: any;
+  isLoading?: boolean;
+}
+
+export default function TickerTable({
+  tickers,
+  error,
+  isLoading,
+}: TickerTableProps) {
   const [filterTicker, setFilterTicker] = useState("");
   const [filterExchange, setFilterExchange] = useState("");
-
-  useEffect(() => {
-    dispatch(fetchTickers());
-  }, [dispatch]);
 
   const filtered = useMemo(() => {
     if (!tickers) return [];
@@ -36,13 +36,19 @@ export default function TickerTable() {
     });
   }, [tickers, filterTicker, filterExchange]);
 
-  if (!tickers) {
+  if (isLoading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
         <CircularProgress />
       </Box>
     );
   }
+  if (error) {
+    return (
+      <Box sx={{ color: "error.main", py: 6 }}>Error loading tickers.</Box>
+    );
+  }
+  if (!tickers) return null;
 
   return (
     <Box>

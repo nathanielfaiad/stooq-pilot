@@ -527,7 +527,7 @@ export default function SwingTradePage() {
               <Paper variant="outlined" sx={{ p: 2, maxWidth: 400 }}>
                 <Box
                   component="form"
-                  sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+                  sx={{ display: "flex", flexDirection: "column", gap: 0.25 }}
                 >
                   {configFieldDefinitions.map((field) => {
                     const value = manualConfig[field.key];
@@ -566,6 +566,13 @@ export default function SwingTradePage() {
                               onChange={handleManualEntryModeChange}
                               size="small"
                               disabled={disabled}
+                              sx={{
+                                "& .MuiSelect-select": {
+                                  paddingTop: 0.5,
+                                  paddingBottom: 0.5,
+                                  paddingLeft: 1,
+                                },
+                              }}
                             >
                               {entryModeOptions.map((option) => (
                                 <MenuItem
@@ -588,6 +595,11 @@ export default function SwingTradePage() {
                             )}
                             inputProps={{
                               step: field.type === "integer" ? 1 : 0.1,
+                              style: {
+                                paddingTop: 4,
+                                paddingBottom: 4,
+                                paddingLeft: 8,
+                              },
                             }}
                             disabled={disabled}
                             sx={{ minWidth: 120, maxWidth: 120 }}
@@ -770,59 +782,6 @@ export default function SwingTradePage() {
                   ))
                 )}
               </Paper>
-              {/* Optionally show failed tickers and debug info below */}
-              {debug && failedResults.length > 0 && (
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                    Failed tickers
-                  </Typography>
-                  {failedResults.map((item: any, index: number) => (
-                    <Accordion
-                      key={`${item.symbol ?? index}-fail`}
-                      disableGutters
-                    >
-                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                        <Typography variant="subtitle1">
-                          {item.symbol ?? "Unknown"}
-                        </Typography>
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 0.75,
-                          }}
-                        >
-                          {(Array.isArray(item.reasons)
-                            ? item.reasons
-                            : []
-                          ).map((reason: string, idx: number) => (
-                            <Chip key={idx} label={reason} size="small" />
-                          ))}
-                          {(!item.reasons || item.reasons.length === 0) && (
-                            <Typography variant="body2" color="text.secondary">
-                              No reasons provided.
-                            </Typography>
-                          )}
-                        </Box>
-                      </AccordionDetails>
-                    </Accordion>
-                  ))}
-                </Paper>
-              )}
-              {debug && data && (
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                    Raw response (debug)
-                  </Typography>
-                  <pre
-                    style={{ whiteSpace: "pre-wrap", wordBreak: "break-word" }}
-                  >
-                    {JSON.stringify(data, null, 2)}
-                  </pre>
-                </Paper>
-              )}
             </Box>
           </Box>
         )}
