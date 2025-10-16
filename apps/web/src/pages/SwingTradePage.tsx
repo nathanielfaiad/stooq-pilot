@@ -10,7 +10,6 @@ import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import FormControl from "@mui/material/FormControl";
 import FormControlLabel from "@mui/material/FormControlLabel";
-import Grid from "@mui/material/Grid";
 import InputLabel from "@mui/material/InputLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
@@ -18,6 +17,7 @@ import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
+import ToggleButtonSwitch from "../components/ToggleButtonSwitch";
 
 type PresetName =
   | "manual"
@@ -507,165 +507,164 @@ export default function SwingTradePage() {
           </Button>
         </Box>
 
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="subtitle1" gutterBottom>
-            Preset configuration
-          </Typography>
-          <Paper variant="outlined" sx={{ p: 2 }}>
-            {preset === "manual" ? (
-              <Grid container spacing={2}>
-                {configFieldDefinitions.map((field) => {
-                  const value = manualConfig[field.key];
-                  if (field.type === "boolean") {
-                    return (
-                      <Grid item xs={12} sm={6} key={field.key}>
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={Boolean(value)}
-                              onChange={handleManualBooleanChange(field.key)}
-                              size="small"
-                            />
-                          }
-                          label={field.label}
-                        />
-                      </Grid>
-                    );
-                  }
-                  if (field.type === "select") {
-                    return (
-                      <Grid item xs={12} sm={6} md={4} key={field.key}>
-                        <FormControl fullWidth size="small">
-                          <InputLabel id={`${field.key}-select-label`}>
-                            {field.label}
-                          </InputLabel>
-                          <Select
-                            labelId={`${field.key}-select-label`}
-                            label={field.label}
-                            value={value as EntryMode}
-                            onChange={handleManualEntryModeChange}
-                            size="small"
-                          >
-                            {entryModeOptions.map((option) => (
-                              <MenuItem key={option.value} value={option.value}>
-                                {option.label}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                    );
-                  }
-                  return (
-                    <Grid item xs={12} sm={6} md={4} key={field.key}>
-                      <TextField
-                        fullWidth
-                        size="small"
-                        label={field.label}
-                        type="number"
-                        value={value as number}
-                        onChange={handleManualNumberChange(
-                          field.key,
-                          field.type
-                        )}
-                        inputProps={{
-                          step: field.type === "integer" ? 1 : 0.1,
-                        }}
-                      />
-                    </Grid>
-                  );
-                })}
-              </Grid>
-            ) : (
-              <Grid container spacing={2}>
-                {configFieldDefinitions.map((field) => (
-                  <Grid item xs={12} sm={6} md={4} key={field.key}>
-                    <Typography variant="caption" color="text.secondary">
-                      {field.label}
-                    </Typography>
-                    <Typography variant="body2">
-                      {formatConfigValue(field, resolvedConfig[field.key])}
-                    </Typography>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-          </Paper>
-        </Box>
-
-        {loading && <Typography>Loading...</Typography>}
-        {error && <Typography color="error">{error}</Typography>}
-
+        {/* Removed duplicate preset configuration form for cleaner layout */}
         {hasSuccessfulRun && (
           <Box
             sx={{
               display: "flex",
-              flexWrap: "wrap",
-              gap: 2,
-              alignItems: "stretch",
+              gap: 3,
+              alignItems: "flex-start",
+              flexWrap: "nowrap",
+              width: "100%",
+              minHeight: 400,
             }}
           >
-            <Box
-              sx={{
-                flex: { xs: "1 1 100%", md: "0 0 320px" },
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-              }}
-            >
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Run statistics
-                </Typography>
-                <Typography variant="h5">{results.length}</Typography>
-                <Box sx={{ mt: 1 }}>
-                  <Typography variant="body2">
-                    Passed: {passedResults.length} (
-                    {numberFormatter.format(passRate)}%)
-                  </Typography>
-                  <Typography variant="body2">
-                    Failed: {failedResults.length} (
-                    {numberFormatter.format(failRate)}%)
-                  </Typography>
-                </Box>
-              </Paper>
-
-              {debug && failureReasonEntries.length > 0 && (
-                <Paper variant="outlined" sx={{ p: 2 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                    Failure reason breakdown
-                  </Typography>
-                  <Box
-                    sx={{ display: "flex", flexDirection: "column", gap: 1 }}
-                  >
-                    {failureReasonEntries.map(([reason, count]) => (
+            {/* Left: Config */}
+            <Box sx={{ width: 400, flex: "0 0 auto", alignSelf: "flex-start" }}>
+              <Typography variant="subtitle1" gutterBottom>
+                Preset configuration
+              </Typography>
+              <Paper variant="outlined" sx={{ p: 2, maxWidth: 400 }}>
+                <Box
+                  component="form"
+                  sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+                >
+                  {configFieldDefinitions.map((field) => {
+                    const value = manualConfig[field.key];
+                    const disabled = preset !== "manual";
+                    return (
                       <Box
-                        key={reason}
+                        key={field.key}
                         sx={{
                           display: "flex",
-                          justifyContent: "space-between",
                           alignItems: "center",
-                          gap: 1,
+                          gap: 2,
+                          minHeight: 40,
                         }}
                       >
-                        <Typography variant="body2">{reason}</Typography>
-                        <Chip label={count} size="small" />
+                        <Typography
+                          sx={{ minWidth: 170, fontWeight: 500 }}
+                          variant="body2"
+                        >
+                          {field.label}
+                        </Typography>
+                        {field.type === "boolean" ? (
+                          <ToggleButtonSwitch
+                            checked={Boolean(value)}
+                            onChange={() =>
+                              !disabled &&
+                              handleManualBooleanChange(field.key)({
+                                target: { checked: !value },
+                              } as any)
+                            }
+                            disabled={disabled}
+                          />
+                        ) : field.type === "select" ? (
+                          <FormControl size="small" sx={{ minWidth: 120 }}>
+                            <Select
+                              value={value as EntryMode}
+                              onChange={handleManualEntryModeChange}
+                              size="small"
+                              disabled={disabled}
+                            >
+                              {entryModeOptions.map((option) => (
+                                <MenuItem
+                                  key={option.value}
+                                  value={option.value}
+                                >
+                                  {option.label}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        ) : (
+                          <TextField
+                            size="small"
+                            type="number"
+                            value={value as number}
+                            onChange={handleManualNumberChange(
+                              field.key,
+                              field.type
+                            )}
+                            inputProps={{
+                              step: field.type === "integer" ? 1 : 0.1,
+                            }}
+                            disabled={disabled}
+                            sx={{ minWidth: 120 }}
+                          />
+                        )}
                       </Box>
-                    ))}
-                  </Box>
-                </Paper>
-              )}
+                    );
+                  })}
+                </Box>
+              </Paper>
             </Box>
-
+            {/* Right: Stats and Results */}
             <Box
               sx={{
-                flex: "1 1 0",
+                flex: 1,
                 minWidth: 0,
                 display: "flex",
                 flexDirection: "column",
                 gap: 2,
+                alignSelf: "flex-start",
               }}
             >
+              <Box sx={{ display: "flex", gap: 2, alignItems: "stretch" }}>
+                <Paper
+                  variant="outlined"
+                  sx={{ p: 1.5, minWidth: 180, flex: "0 0 auto" }}
+                >
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Run statistics
+                  </Typography>
+                  <Typography variant="h5">{results.length}</Typography>
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="body2">
+                      Passed: {passedResults.length} (
+                      {numberFormatter.format(passRate)}%)
+                    </Typography>
+                    <Typography variant="body2">
+                      Failed: {failedResults.length} (
+                      {numberFormatter.format(failRate)}%)
+                    </Typography>
+                  </Box>
+                </Paper>
+                {/* Collapsible failure breakdown */}
+                {debug && failureReasonEntries.length > 0 && (
+                  <Accordion sx={{ minWidth: 180, flex: "0 0 auto" }}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Typography variant="subtitle2">
+                        Failure reason breakdown
+                      </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                        }}
+                      >
+                        {failureReasonEntries.map(([reason, count]) => (
+                          <Box
+                            key={reason}
+                            sx={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <Typography variant="body2">{reason}</Typography>
+                            <Chip label={count} size="small" />
+                          </Box>
+                        ))}
+                      </Box>
+                    </AccordionDetails>
+                  </Accordion>
+                )}
+              </Box>
               <Paper variant="outlined" sx={{ p: 2 }}>
                 <Typography variant="subtitle2" sx={{ mb: 1 }}>
                   Passing tickers
@@ -771,7 +770,7 @@ export default function SwingTradePage() {
                   ))
                 )}
               </Paper>
-
+              {/* Optionally show failed tickers and debug info below */}
               {debug && failedResults.length > 0 && (
                 <Paper variant="outlined" sx={{ p: 2 }}>
                   <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -812,7 +811,6 @@ export default function SwingTradePage() {
                   ))}
                 </Paper>
               )}
-
               {debug && data && (
                 <Paper variant="outlined" sx={{ p: 2 }}>
                   <Typography variant="subtitle2" sx={{ mb: 1 }}>
