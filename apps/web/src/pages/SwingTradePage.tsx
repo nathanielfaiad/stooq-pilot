@@ -15,6 +15,11 @@ import MenuItem from "@mui/material/MenuItem";
 import Paper from "@mui/material/Paper";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Switch from "@mui/material/Switch";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import ToggleButtonSwitch from "../components/common/ToggleButtonSwitch";
@@ -452,7 +457,7 @@ export default function SwingTradePage() {
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
-        Swing Trade Scan: {symbol}
+        Swing Trade Scanner
       </Typography>
       <Paper sx={{ p: 2 }}>
         <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap", mb: 2 }}>
@@ -623,7 +628,7 @@ export default function SwingTradePage() {
               }}
             >
               <Box sx={{ display: "flex", gap: 2, alignItems: "stretch" }}>
-                <Paper
+                {/* <Paper
                   variant="outlined"
                   sx={{ p: 1.5, minWidth: 180, flex: "0 0 auto" }}
                 >
@@ -641,7 +646,7 @@ export default function SwingTradePage() {
                       {numberFormatter.format(failRate)}%)
                     </Typography>
                   </Box>
-                </Paper>
+                </Paper> */}
                 {/* Collapsible failure breakdown */}
                 {debug && failureReasonEntries.length > 0 && (
                   <Accordion sx={{ minWidth: 180, flex: "0 0 auto" }}>
@@ -678,108 +683,99 @@ export default function SwingTradePage() {
                 )}
               </Box>
               <Paper variant="outlined" sx={{ p: 2 }}>
+                {/* Title with formatted date */}
                 <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                  Passing tickers
+                  Passing Tickers for{" "}
+                  {forDate ? formatIntDateToDisplay(forDate) : "latest"}
                 </Typography>
                 {passedResults.length === 0 ? (
                   <Typography variant="body2" color="text.secondary">
                     No passing tickers detected.
                   </Typography>
                 ) : (
-                  passedResults.map((item: any, index: number) => (
-                    <Accordion
-                      key={`${item.symbol}-${index}`}
-                      disableGutters
-                      defaultExpanded={index === 0}
-                    >
-                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 0.5,
-                          }}
-                        >
-                          <Typography variant="subtitle1">
-                            {item.symbol ?? "Unknown"}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {item.signals?.length ?? 0} signal
-                            {item.signals?.length === 1 ? "" : "s"}
-                          </Typography>
-                        </Box>
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        {Array.isArray(item.signals) &&
-                        item.signals.length > 0 ? (
-                          item.signals.map((signal: any, sIdx: number) => (
-                            <Paper
-                              key={sIdx}
-                              variant="outlined"
-                              sx={{ p: 1.5, mb: 1.5 }}
-                            >
-                              <Typography variant="subtitle2">
-                                Signal date:{" "}
-                                {formatIntDateToDisplay(signal.date)}
-                              </Typography>
-                              <Typography variant="body2">
-                                Entry: {numberFormatter.format(signal.entryPx)}{" "}
-                                · Stop: {numberFormatter.format(signal.stop)}
-                              </Typography>
-                              <Typography variant="body2">
-                                Targets:{" "}
-                                {Array.isArray(signal.targets)
-                                  ? signal.targets
-                                      .map((t: number) =>
-                                        numberFormatter.format(t)
-                                      )
-                                      .join(", ")
-                                  : "—"}
-                              </Typography>
-                              <Typography variant="body2">
-                                RR to swing:{" "}
-                                {signal.rrToSwing != null
-                                  ? numberFormatter.format(signal.rrToSwing)
-                                  : "—"}
-                              </Typography>
-                              {signal.meta && (
-                                <Box
-                                  sx={{
-                                    mt: 1,
-                                    display: "flex",
-                                    gap: 1.5,
-                                    flexWrap: "wrap",
-                                  }}
-                                >
-                                  {Object.entries(signal.meta).map(
-                                    ([metaKey, metaValue]) => (
-                                      <Box key={metaKey}>
-                                        <Typography
-                                          variant="caption"
-                                          color="text.secondary"
-                                        >
-                                          {metaKey}
-                                        </Typography>
-                                        <Typography variant="body2">
-                                          {typeof metaValue === "number"
-                                            ? numberFormatter.format(metaValue)
-                                            : String(metaValue)}
-                                        </Typography>
-                                      </Box>
-                                    )
-                                  )}
-                                </Box>
-                              )}
-                            </Paper>
-                          ))
-                        ) : (
-                          <Typography variant="body2" color="text.secondary">
-                            No signal details provided.
-                          </Typography>
-                        )}
-                      </AccordionDetails>
-                    </Accordion>
-                  ))
+                  <Table size="small" sx={{ width: "100%" }}>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Symbol</TableCell>
+                        <TableCell>Entry</TableCell>
+                        <TableCell>Stop</TableCell>
+                        <TableCell>Targets</TableCell>
+                        <TableCell>RR to swing</TableCell>
+                        <TableCell>RSI</TableCell>
+                        <TableCell>Relative Volume</TableCell>
+                        <TableCell>% above 50</TableCell>
+                        <TableCell>Entry mode</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {passedResults.flatMap((item: any) =>
+                        (item.signals || []).map(
+                          (signal: any, sIdx: number) => {
+                            const symbol = (item.symbol ?? "—").toUpperCase();
+                            const targets = Array.isArray(signal.targets)
+                              ? signal.targets
+                                  .map((t: number) => numberFormatter.format(t))
+                                  .join(", ")
+                              : "—";
+                            const rr =
+                              signal.rrToSwing != null
+                                ? numberFormatter.format(signal.rrToSwing)
+                                : "—";
+                            const rsi =
+                              signal.meta && typeof signal.meta.rsi === "number"
+                                ? numberFormatter.format(signal.meta.rsi)
+                                : "—";
+                            const relVol =
+                              signal.meta &&
+                              typeof signal.meta.relVol === "number"
+                                ? numberFormatter.format(signal.meta.relVol)
+                                : "—";
+                            const pctAbove50 =
+                              signal.meta &&
+                              typeof signal.meta.pctAbove50 === "number"
+                                ? `${numberFormatter.format(
+                                    signal.meta.pctAbove50
+                                  )}%`
+                                : "—";
+                            const entryModeVal =
+                              signal.entryMode ??
+                              signal.meta?.entryMode ??
+                              item.entryMode ??
+                              manualConfig.entryMode;
+                            const entryModeLabel =
+                              entryModeOptions.find(
+                                (o) => o.value === entryModeVal
+                              )?.label ?? String(entryModeVal ?? "—");
+                            return (
+                              <TableRow
+                                key={`${symbol}-${signal.date ?? sIdx}`}
+                              >
+                                <TableCell sx={{ fontWeight: 600 }}>
+                                  {symbol}
+                                </TableCell>
+                                <TableCell>
+                                  {signal.entryPx != null
+                                    ? numberFormatter.format(signal.entryPx)
+                                    : "—"}
+                                </TableCell>
+                                <TableCell>
+                                  {signal.stop != null
+                                    ? numberFormatter.format(signal.stop)
+                                    : "—"}
+                                </TableCell>
+                                <TableCell>{targets}</TableCell>
+                                <TableCell>{rr}</TableCell>
+                                <TableCell>{rsi}</TableCell>
+                                <TableCell>{relVol}</TableCell>
+                                <TableCell>{pctAbove50}</TableCell>
+                                <TableCell>{entryModeLabel}</TableCell>
+                              </TableRow>
+                            );
+                          }
+                        )
+                      )}
+                    </TableBody>
+                  </Table>
                 )}
               </Paper>
             </Box>

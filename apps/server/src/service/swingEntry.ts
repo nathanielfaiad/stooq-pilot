@@ -4,7 +4,6 @@ import {
   getTickerPrices,
   getTickers,
 } from "../db/sql";
-import { logError, logJson } from "../log/util";
 import { addDaysInt, IntDate, todayIntUTC } from "./dates";
 import { atr as atrCalc, ema, highest, rsi, sma } from "./indicators";
 import { PresetName, Signal, SwingConfig } from "./models";
@@ -287,7 +286,7 @@ export async function evaluateTickerForDate(
   const vols: number[] = rows.map((r: { volume: number }) => r.volume);
 
   // Debug: log price bar count
-  logJson({ ticker, forDate, priceBarCount: rows.length });
+  // logJson({ ticker, forDate, priceBarCount: rows.length });
 
   const sma50 = sma(closes, 50);
   const sma200 = sma(closes, 200);
@@ -302,21 +301,21 @@ export async function evaluateTickerForDate(
   );
 
   // Debug: log indicator values for target date
-  logJson({
-    ticker,
-    forDate,
-    idx,
-    closesLen: closes.length,
-    highsLen: highs.length,
-    lowsLen: lows.length,
-    sma50: sma50[idx],
-    sma200: sma200[idx],
-    rsi: rsiSeries[idx],
-    atr: atrSeries[idx],
-    highest20: highest20[idx],
-    volSma20: volSma20[idx],
-    closes: closes.slice(Math.max(0, idx - 5), idx + 1),
-  });
+  // logJson({
+  //   ticker,
+  //   forDate,
+  //   idx,
+  //   closesLen: closes.length,
+  //   highsLen: highs.length,
+  //   lowsLen: lows.length,
+  //   sma50: sma50[idx],
+  //   sma200: sma200[idx],
+  //   rsi: rsiSeries[idx],
+  //   atr: atrSeries[idx],
+  //   highest20: highest20[idx],
+  //   volSma20: volSma20[idx],
+  //   closes: closes.slice(Math.max(0, idx - 5), idx + 1),
+  // });
   // if (idx < 0) {
   //   console.warn(`forDate ${forDate} not found in data for ${ticker}`);
   // }
@@ -333,16 +332,16 @@ export async function evaluateTickerForDate(
     isNaN(atrSeries[idx]) ||
     isNaN(highest20[idx])
   ) {
-    logError("Insufficient indicator history", {
-      ticker,
-      forDate,
-      idx,
-      sma50: sma50[idx],
-      sma200: sma200[idx],
-      rsi: rsiSeries[idx],
-      atr: atrSeries[idx],
-      highest20: highest20[idx],
-    });
+    // logError("Insufficient indicator history", {
+    //   ticker,
+    //   forDate,
+    //   idx,
+    //   sma50: sma50[idx],
+    //   sma200: sma200[idx],
+    //   rsi: rsiSeries[idx],
+    //   atr: atrSeries[idx],
+    //   highest20: highest20[idx],
+    // });
     return { passed: false, reasons: ["insufficient indicator history"] };
   }
 
@@ -529,7 +528,7 @@ export async function scanTickersForDate(
     } catch (err) {
       // ignore individual ticker errors but log
       // eslint-disable-next-line no-console
-      logError(`Error scanning ${t.ticker}:`, err);
+      // logError(`Error scanning ${t.ticker}:`, err);
       if (debug) {
         results.push({
           id: t.id,
@@ -542,7 +541,7 @@ export async function scanTickersForDate(
   }
 
   // Output the summary of failure reasons.
-  logJson({ FailureReasonsSummary: failureReasonCounts });
+  // logJson({ FailureReasonsSummary: failureReasonCounts });
 
   return results;
 }

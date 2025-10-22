@@ -1,11 +1,8 @@
+import { SwingConfig } from "@src/service/models";
 import { Request, Response, Router } from "express";
 import { getTickers, getTickersFiltered } from "../db/sql";
 import { todayIntUTC } from "../service/dates";
-import {
-  analyzeSwing,
-  scanTickersForDate,
-  type SwingConfig,
-} from "../service/swingEntry";
+import { analyzeSwing, scanTickersForDate } from "../service/swingEntry";
 
 const router = Router();
 
@@ -26,7 +23,7 @@ router.get("/", async (req: Request, res: Response) => {
     return res.json(rows);
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.error("Error fetching tickers", err);
+    // console.error("Error fetching tickers", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -84,7 +81,12 @@ router.get("/scan", async (req: Request, res: Response) => {
 // GET /api/tickers/scan/date?forDate=YYYYMMDD&preset=balanced
 router.get("/scan/date", async (req: Request, res: Response) => {
   try {
-    const { forDate: forDateStr, preset, debug, overrides } = req.query as {
+    const {
+      forDate: forDateStr,
+      preset,
+      debug,
+      overrides,
+    } = req.query as {
       forDate?: string;
       preset?: string;
       debug?: string | undefined;
